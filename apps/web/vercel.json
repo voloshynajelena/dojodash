@@ -1,0 +1,4 @@
+{
+  "buildCommand": "cd ../.. && pnpm install && pnpm build --filter=@dojodash/web",
+  "framework": "nextjs"
+}
