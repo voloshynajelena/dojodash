@@ -1,0 +1,61 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.role == 'ADMIN';
+    }
+
+    function isCoach() {
+      return isAuthenticated() && request.auth.token.role == 'COACH';
+    }
+
+    function hasClubAccess(clubId) {
+      return isAdmin() || (isCoach() && clubId in request.auth.token.clubIds);
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < 5 * 1024 * 1024; // 5MB max
+    }
+
+    // User profile photos
+    match /users/{uid}/profile/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(uid) && isValidImage();
+    }
+
+    // Child profile photos
+    match /users/{uid}/children/{childId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(uid) && isValidImage();
+    }
+
+    // Club logos
+    match /clubs/{clubId}/logo/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if hasClubAccess(clubId) && isValidImage();
+    }
+
+    // Medal icons
+    match /clubs/{clubId}/medals/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if hasClubAccess(clubId) && isValidImage();
+    }
+
+    // Achievement icons
+    match /clubs/{clubId}/achievements/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if hasClubAccess(clubId) && isValidImage();
+    }
+  }
+}

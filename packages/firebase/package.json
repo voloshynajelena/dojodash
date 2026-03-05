@@ -1,0 +1,48 @@
+{
+  "name": "@dojodash/firebase",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./client": {
+      "import": "./dist/client/index.mjs",
+      "require": "./dist/client/index.js",
+      "types": "./dist/client/index.d.ts"
+    },
+    "./admin": {
+      "import": "./dist/admin/index.mjs",
+      "require": "./dist/admin/index.js",
+      "types": "./dist/admin/index.d.ts"
+    },
+    "./dal": {
+      "import": "./dist/dal/index.mjs",
+      "require": "./dist/dal/index.js",
+      "types": "./dist/dal/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx scripts/seed.ts"
+  },
+  "dependencies": {
+    "@dojodash/core": "workspace:*",
+    "firebase": "^11.1.0",
+    "firebase-admin": "^13.0.2"
+  },
+  "devDependencies": {
+    "@dojodash/config": "workspace:*",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
