@@ -1,5 +1,5 @@
 import { Timestamp } from 'firebase/firestore';
-import type { Timestamp as TimestampType } from '@dojodash/core/models';
+import type { Timestamp as TimestampType } from '@dojodash/core';
 
 export function toFirestoreTimestamp(date: Date): Timestamp {
   return Timestamp.fromDate(date);

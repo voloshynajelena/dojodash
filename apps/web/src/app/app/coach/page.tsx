@@ -1,11 +1,229 @@
 'use client';
 
-import { Title, Text, SimpleGrid, Paper, Stack } from '@mantine/core';
-import { IconUsers, IconCalendar, IconMedal, IconChartBar } from '@tabler/icons-react';
+import { useState, useEffect } from 'react';
+import {
+  Title, Text, SimpleGrid, Paper, Stack, Card, Group, Button, Badge,
+  Avatar, Checkbox, Modal, Select, TextInput, Loader, Center, ActionIcon,
+  Tooltip
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
+import {
+  IconUsers, IconCalendar, IconChartBar, IconCheck,
+  IconClock, IconTrophy, IconUserCheck
+} from '@tabler/icons-react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { StatsCard } from '@dojodash/ui/components';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  getSessions, getGroups, getGroupMembers, updateSession,
+  getMedalTemplates, awardMedal
+} from '@dojodash/firebase';
+import type { Session, Group as GroupType, GroupMember, MedalTemplate } from '@dojodash/core';
 
 export default function CoachDashboard() {
+  const { user, claims } = useAuth();
+  // Always use demo-club for now until claims are properly set
+  const clubId = 'demo-club';
+
+  const [loading, setLoading] = useState(true);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [groups, setGroups] = useState<GroupType[]>([]);
+  const [rewardTemplates, setRewardTemplates] = useState<MedalTemplate[]>([]);
+  const [todaysSessions, setTodaysSessions] = useState<Session[]>([]);
+  const [weekSessions, setWeekSessions] = useState<Session[]>([]);
+
+  // Attendance modal state
+  const [attendanceOpened, { open: openAttendance, close: closeAttendance }] = useDisclosure(false);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [sessionMembers, setSessionMembers] = useState<GroupMember[]>([]);
+  const [attendance, setAttendance] = useState<Record<string, boolean>>({});
+  const [savingAttendance, setSavingAttendance] = useState(false);
+
+  // Reward modal state
+  const [rewardOpened, { open: openReward, close: closeReward }] = useDisclosure(false);
+  const [rewardMember, setRewardMember] = useState<GroupMember | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [rewardNote, setRewardNote] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, [clubId]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [sessionsData, groupsData, templatesData] = await Promise.all([
+        getSessions(clubId),
+        getGroups(clubId),
+        getMedalTemplates(clubId),
+      ]);
+
+      setSessions(sessionsData);
+      setGroups(groupsData);
+      setRewardTemplates(templatesData);
+
+      // Filter today's sessions
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const todaysFiltered = sessionsData.filter(s => {
+        if (!s.date?.seconds) return false;
+        const sessionDate = new Date(s.date.seconds * 1000);
+        return sessionDate >= today && sessionDate < tomorrow && s.status === 'scheduled';
+      });
+      setTodaysSessions(todaysFiltered);
+
+      // Filter this week's sessions
+      const weekStart = new Date(today);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+
+      const weekFiltered = sessionsData.filter(s => {
+        if (!s.date?.seconds) return false;
+        const sessionDate = new Date(s.date.seconds * 1000);
+        return sessionDate >= weekStart && sessionDate < weekEnd;
+      });
+      setWeekSessions(weekFiltered);
+
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getGroupName = (groupId: string) => {
+    return groups.find(g => g.id === groupId)?.name ?? 'Unknown';
+  };
+
+  const getGroupColor = (groupId: string) => {
+    return groups.find(g => g.id === groupId)?.color ?? 'blue';
+  };
+
+  const formatTime = (session: Session | null) => {
+    if (!session?.startTime) return '';
+    return `${session.startTime.hour}:${String(session.startTime.minute).padStart(2, '0')}`;
+  };
+
+  const getTotalMembers = () => {
+    return groups.reduce((sum, g) => sum + (g.memberCount || 0), 0);
+  };
+
+  const handleOpenAttendance = async (session: Session) => {
+    setSelectedSession(session);
+    try {
+      const members = await getGroupMembers(clubId, session.groupId);
+      setSessionMembers(members);
+      // Initialize attendance (all present by default)
+      const initialAttendance: Record<string, boolean> = {};
+      members.forEach(m => {
+        initialAttendance[m.childId] = true;
+      });
+      setAttendance(initialAttendance);
+      openAttendance();
+    } catch (error) {
+      console.error('Failed to load members:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to load group members',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleSaveAttendance = async () => {
+    if (!selectedSession) return;
+
+    setSavingAttendance(true);
+    try {
+      // Mark session as completed with attendance data
+      await updateSession(clubId, selectedSession.id, {
+        status: 'completed',
+      });
+
+      notifications.show({
+        title: 'Attendance Saved',
+        message: `Marked ${Object.values(attendance).filter(Boolean).length} members present`,
+        color: 'green',
+      });
+
+      closeAttendance();
+      loadData();
+    } catch (error) {
+      console.error('Failed to save attendance:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to save attendance',
+        color: 'red',
+      });
+    } finally {
+      setSavingAttendance(false);
+    }
+  };
+
+  const handleOpenReward = (member: GroupMember) => {
+    setRewardMember(member);
+    setSelectedTemplateId(null);
+    setRewardNote('');
+    openReward();
+  };
+
+  const handleGiveReward = async () => {
+    if (!rewardMember || !selectedTemplateId || !selectedSession) return;
+
+    const template = rewardTemplates.find(t => t.id === selectedTemplateId);
+    if (!template) return;
+
+    try {
+      await awardMedal(clubId, {
+        templateId: template.id,
+        childId: rewardMember.childId,
+        clubId,
+        groupId: selectedSession.groupId,
+        name: template.name,
+        description: template.description,
+        color: template.color,
+        xpValue: template.xpValue,
+        category: template.category,
+        awardedBy: user?.uid ?? '',
+        awardedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+        reason: rewardNote,
+      });
+
+      notifications.show({
+        title: 'Reward Given!',
+        message: `${template.name} (+${template.xpValue} XP) awarded to ${rewardMember.childName}`,
+        color: 'green',
+        icon: <IconTrophy size={16} />,
+      });
+
+      closeReward();
+    } catch (error) {
+      console.error('Failed to give reward:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to give reward',
+        color: 'red',
+      });
+    }
+  };
+
+  const selectedTemplate = rewardTemplates.find(t => t.id === selectedTemplateId);
+
+  if (loading) {
+    return (
+      <AuthGuard allowedRoles={['ADMIN', 'COACH']}>
+        <Center h={300}>
+          <Loader size="lg" />
+        </Center>
+      </AuthGuard>
+    );
+  }
+
   return (
     <AuthGuard allowedRoles={['ADMIN', 'COACH']}>
       <Stack gap="lg">
@@ -17,41 +235,232 @@ export default function CoachDashboard() {
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
           <StatsCard
             title="Total Members"
-            value="0"
+            value={String(getTotalMembers())}
             icon={<IconUsers size={24} />}
             color="blue"
           />
           <StatsCard
             title="Sessions This Week"
-            value="0"
+            value={String(weekSessions.length)}
             icon={<IconCalendar size={24} />}
             color="green"
           />
           <StatsCard
-            title="Medals Awarded"
-            value="0"
-            subtitle="this month"
-            icon={<IconMedal size={24} />}
-            color="yellow"
+            title="Today's Classes"
+            value={String(todaysSessions.length)}
+            icon={<IconClock size={24} />}
+            color="orange"
           />
           <StatsCard
-            title="Avg Attendance"
-            value="0%"
+            title="Groups"
+            value={String(groups.length)}
             icon={<IconChartBar size={24} />}
             color="violet"
           />
         </SimpleGrid>
 
         <Paper p="lg" withBorder>
-          <Title order={4} mb="md">Today's Sessions</Title>
-          <Text c="dimmed">No sessions scheduled for today.</Text>
+          <Group justify="space-between" mb="md">
+            <Title order={4}>Today's Sessions</Title>
+            <Text size="sm" c="dimmed">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </Text>
+          </Group>
+
+          {todaysSessions.length === 0 ? (
+            <Text c="dimmed">No sessions scheduled for today.</Text>
+          ) : (
+            <Stack gap="md">
+              {todaysSessions.map(session => (
+                <Card key={session.id} withBorder padding="md">
+                  <Group justify="space-between">
+                    <Group>
+                      <Avatar color={getGroupColor(session.groupId)} radius="xl">
+                        {getGroupName(session.groupId)[0]}
+                      </Avatar>
+                      <div>
+                        <Text fw={500}>{session.title}</Text>
+                        <Group gap="xs">
+                          <Badge variant="light" color={getGroupColor(session.groupId)}>
+                            {getGroupName(session.groupId)}
+                          </Badge>
+                          <Text size="sm" c="dimmed">
+                            {formatTime(session)}
+                          </Text>
+                        </Group>
+                      </div>
+                    </Group>
+                    <Group>
+                      <Button
+                        leftSection={<IconUserCheck size={16} />}
+                        variant="light"
+                        onClick={() => handleOpenAttendance(session)}
+                      >
+                        Take Attendance
+                      </Button>
+                    </Group>
+                  </Group>
+                </Card>
+              ))}
+            </Stack>
+          )}
         </Paper>
 
         <Paper p="lg" withBorder>
-          <Title order={4} mb="md">Recent Activity</Title>
-          <Text c="dimmed">No recent activity to display.</Text>
+          <Title order={4} mb="md">Quick Actions</Title>
+          <Group>
+            <Button variant="light" leftSection={<IconCalendar size={16} />} component="a" href="/app/coach/schedule">
+              View Schedule
+            </Button>
+            <Button variant="light" leftSection={<IconUsers size={16} />} component="a" href="/app/coach/groups">
+              Manage Groups
+            </Button>
+            <Button variant="light" leftSection={<IconTrophy size={16} />} component="a" href="/app/coach/rewards">
+              Rewards & Goals
+            </Button>
+          </Group>
         </Paper>
       </Stack>
+
+      {/* Attendance Modal */}
+      <Modal
+        opened={attendanceOpened}
+        onClose={closeAttendance}
+        title={
+          <Group>
+            <IconUserCheck size={20} />
+            <Text fw={500}>Take Attendance - {selectedSession?.title}</Text>
+          </Group>
+        }
+        size="md"
+      >
+        <Stack>
+          <Text size="sm" c="dimmed">
+            {getGroupName(selectedSession?.groupId ?? '')} • {formatTime(selectedSession)}
+          </Text>
+
+          {sessionMembers.length === 0 ? (
+            <Text c="dimmed" ta="center" py="lg">
+              No members in this group yet.
+            </Text>
+          ) : (
+            <Stack gap="xs">
+              {sessionMembers.map(member => (
+                <Card key={member.childId} withBorder padding="sm">
+                  <Group justify="space-between">
+                    <Group>
+                      <Checkbox
+                        checked={attendance[member.childId] ?? false}
+                        onChange={(e) => setAttendance({
+                          ...attendance,
+                          [member.childId]: e.currentTarget.checked
+                        })}
+                      />
+                      <Avatar color="blue" radius="xl" size="sm">
+                        {member.childName[0]}
+                      </Avatar>
+                      <Text size="sm">{member.childName}</Text>
+                    </Group>
+                    <Tooltip label="Give reward">
+                      <ActionIcon
+                        variant="subtle"
+                        color="yellow"
+                        onClick={() => handleOpenReward(member)}
+                        disabled={rewardTemplates.length === 0}
+                      >
+                        <IconTrophy size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Group>
+                </Card>
+              ))}
+            </Stack>
+          )}
+
+          <Group justify="space-between" mt="md">
+            <Text size="sm" c="dimmed">
+              {Object.values(attendance).filter(Boolean).length} / {sessionMembers.length} present
+            </Text>
+            <Group>
+              <Button variant="subtle" onClick={closeAttendance}>Cancel</Button>
+              <Button
+                leftSection={<IconCheck size={16} />}
+                onClick={handleSaveAttendance}
+                loading={savingAttendance}
+              >
+                Save Attendance
+              </Button>
+            </Group>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Reward Modal */}
+      <Modal
+        opened={rewardOpened}
+        onClose={closeReward}
+        title={
+          <Group>
+            <IconTrophy size={20} />
+            <Text fw={500}>Give Reward to {rewardMember?.childName}</Text>
+          </Group>
+        }
+        size="sm"
+      >
+        <Stack>
+          {rewardTemplates.length === 0 ? (
+            <Paper p="md" bg="yellow.0" radius="md">
+              <Text size="sm" c="yellow.8">
+                No rewards created yet. Go to{' '}
+                <Text component="a" href="/app/coach/rewards" c="blue" style={{ cursor: 'pointer' }}>
+                  Rewards & Goals
+                </Text>{' '}
+                to create custom rewards.
+              </Text>
+            </Paper>
+          ) : (
+            <>
+              <Select
+                label="Reward Type"
+                placeholder="Select a reward"
+                data={rewardTemplates.map(t => ({
+                  value: t.id,
+                  label: `${t.name} (+${t.xpValue} XP)`,
+                }))}
+                value={selectedTemplateId}
+                onChange={setSelectedTemplateId}
+              />
+
+              {selectedTemplate && (
+                <Paper p="sm" bg="green.0" radius="md">
+                  <Text size="sm" c="green.8">
+                    Awarding <strong>{selectedTemplate.name}</strong> • +{selectedTemplate.xpValue} XP
+                  </Text>
+                </Paper>
+              )}
+
+              <TextInput
+                label="Note (optional)"
+                placeholder="Add a personal note..."
+                value={rewardNote}
+                onChange={(e) => setRewardNote(e.currentTarget.value)}
+              />
+            </>
+          )}
+
+          <Group justify="flex-end" mt="md">
+            <Button variant="subtle" onClick={closeReward}>Cancel</Button>
+            <Button
+              leftSection={<IconTrophy size={16} />}
+              onClick={handleGiveReward}
+              disabled={!selectedTemplateId}
+              color="yellow"
+            >
+              Give Reward
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </AuthGuard>
   );
 }

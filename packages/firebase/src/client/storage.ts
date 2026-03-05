@@ -61,4 +61,22 @@ export async function deleteFile(path: string): Promise<void> {
   await deleteObject(storageRef);
 }
 
+export async function uploadClubLogo(clubId: string, file: File): Promise<string> {
+  const ext = file.name.split('.').pop() ?? 'png';
+  const path = `clubs/${clubId}/logo/logo.${ext}`;
+  return uploadFile(path, file);
+}
+
+export async function uploadChildPhoto(parentUid: string, childId: string, file: File): Promise<string> {
+  const ext = file.name.split('.').pop() ?? 'png';
+  const path = `users/${parentUid}/children/${childId}/photo.${ext}`;
+  return uploadFile(path, file);
+}
+
+export async function uploadMedalIcon(clubId: string, templateId: string, file: File): Promise<string> {
+  const ext = file.name.split('.').pop() ?? 'png';
+  const path = `clubs/${clubId}/medals/${templateId}.${ext}`;
+  return uploadFile(path, file);
+}
+
 export { ref, type StorageReference, type UploadTask };

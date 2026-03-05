@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import type { AdminCreateCoachRequest, AdminCreateCoachResponse, AuthClaims } from '@dojodash/core/contracts';
+import type { AdminCreateCoachRequest, AdminCreateCoachResponse, AuthClaims } from '@dojodash/core';
 import { requireAdmin, createAuditLog } from '../utils';
 
 export const adminCreateCoach = onCall<AdminCreateCoachRequest, Promise<AdminCreateCoachResponse>>(

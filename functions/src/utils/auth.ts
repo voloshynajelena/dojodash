@@ -1,6 +1,6 @@
 import { HttpsError, type CallableRequest } from 'firebase-functions/v2/https';
-import type { UserRole } from '@dojodash/core/models';
-import type { AuthClaims } from '@dojodash/core/contracts';
+import type { UserRole } from '@dojodash/core';
+import type { AuthClaims } from '@dojodash/core';
 
 export function requireAuth(request: CallableRequest): AuthClaims {
   if (!request.auth) {

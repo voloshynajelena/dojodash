@@ -24,7 +24,7 @@ import type {
   CreateInviteResponse,
   ClaimInviteRequest,
   ClaimInviteResponse,
-} from '@dojodash/core/contracts';
+} from '@dojodash/core';
 
 let functions: Functions | undefined;
 let emulatorConnected = false;

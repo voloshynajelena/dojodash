@@ -1,10 +1,10 @@
 import { getChildrenPublic, subscribeToChildrenPublic } from './clubs';
-import type { ChildPublic } from '@dojodash/core/models';
+import type { ChildPublic } from '@dojodash/core';
 import {
   buildLeaderboard,
   type LeaderboardEntry,
   type LeaderboardMetric,
-} from '@dojodash/core/logic';
+} from '@dojodash/core';
 import type { Unsubscribe } from '../client/firestore';
 
 export interface LeaderboardOptions {

@@ -13,9 +13,10 @@ import {
   onSnapshot,
   serverTimestamp,
   Timestamp,
+  writeBatch,
   type Unsubscribe,
 } from '../client/firestore';
-import type { Session, SessionRecurrence } from '@dojodash/core/models';
+import type { Session, SessionRecurrence } from '@dojodash/core';
 
 const CLUBS_COLLECTION = 'clubs';
 const SESSIONS_SUBCOLLECTION = 'sessions';
@@ -75,6 +76,39 @@ export async function createSession(
     updatedAt: serverTimestamp(),
   });
   return docRef.id;
+}
+
+export async function createSessionsBatch(
+  clubId: string,
+  sessions: Omit<Session, 'id' | 'clubId' | 'status' | 'createdAt' | 'updatedAt'>[]
+): Promise<string[]> {
+  const db = getFirestoreDb();
+  const colRef = collection(db, CLUBS_COLLECTION, clubId, SESSIONS_SUBCOLLECTION);
+  const ids: string[] = [];
+
+  // Firestore batch limit is 500 operations
+  const BATCH_SIZE = 500;
+
+  for (let i = 0; i < sessions.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    const chunk = sessions.slice(i, i + BATCH_SIZE);
+
+    for (const session of chunk) {
+      const docRef = doc(colRef);
+      ids.push(docRef.id);
+      batch.set(docRef, {
+        ...session,
+        clubId,
+        status: 'scheduled',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    await batch.commit();
+  }
+
+  return ids;
 }
 
 export async function updateSession(

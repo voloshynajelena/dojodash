@@ -12,7 +12,7 @@ export function initAppCheck(): AppCheck | undefined {
 
   if (typeof window === 'undefined') return undefined;
 
-  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+  const siteKey = process.env['NEXT_PUBLIC_RECAPTCHA_SITE_KEY'];
   if (!siteKey) {
     console.warn('App Check: Missing NEXT_PUBLIC_RECAPTCHA_SITE_KEY');
     return undefined;

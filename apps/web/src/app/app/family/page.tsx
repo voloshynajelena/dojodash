@@ -6,12 +6,12 @@ import { useDisclosure } from '@mantine/hooks';
 import { useForm, zodResolver } from '@mantine/form';
 import { DateInput } from '@mantine/dates';
 import { IconPlus, IconUser } from '@tabler/icons-react';
-import { createChildSchema } from '@dojodash/core/schemas';
-import type { Child } from '@dojodash/core/models';
+import { createChildSchema } from '@dojodash/core';
+import type { Child } from '@dojodash/core';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuth } from '@/hooks/useAuth';
-import { getChildren, createChild } from '@dojodash/firebase/dal';
-import { EmptyState, LoadingState } from '@dojodash/ui/components';
+import { getChildren, createChild } from '@dojodash/firebase';
+import { EmptyState, LoadingState } from '@dojodash/ui';
 
 export default function FamilyChildrenPage() {
   const { user } = useAuth();

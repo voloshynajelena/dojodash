@@ -23,8 +23,8 @@ export function initAdminApp(): App {
     return app!;
   }
 
-  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const serviceAccountKey = process.env['FIREBASE_SERVICE_ACCOUNT_KEY'];
+  const projectId = process.env['FIREBASE_PROJECT_ID'] || process.env['NEXT_PUBLIC_FIREBASE_PROJECT_ID'];
 
   if (serviceAccountKey) {
     const serviceAccount = JSON.parse(serviceAccountKey) as ServiceAccount;

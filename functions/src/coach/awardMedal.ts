@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import type { AwardOrTransferMedalRequest, AwardOrTransferMedalResponse } from '@dojodash/core/contracts';
-import type { MedalTemplate, Medal } from '@dojodash/core/models';
+import type { AwardOrTransferMedalRequest, AwardOrTransferMedalResponse } from '@dojodash/core';
+import type { MedalTemplate, Medal } from '@dojodash/core';
 import { requireClubAccess, createAuditLog, createNotification } from '../utils';
 
 export const awardOrTransferMedal = onCall<

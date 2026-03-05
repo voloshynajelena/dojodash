@@ -12,7 +12,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from '../client/firestore';
-import type { AuditLog, AuditAction, AuditTargetType } from '@dojodash/core/models';
+import type { AuditLog, AuditAction, AuditTargetType } from '@dojodash/core';
 
 const AUDIT_LOGS_COLLECTION = 'auditLogs';
 

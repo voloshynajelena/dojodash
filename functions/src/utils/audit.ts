@@ -1,5 +1,5 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import type { AuditAction, AuditTargetType } from '@dojodash/core/models';
+import type { AuditAction, AuditTargetType } from '@dojodash/core';
 
 export interface AuditInput {
   action: AuditAction;

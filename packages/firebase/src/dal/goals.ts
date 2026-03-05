@@ -14,7 +14,7 @@ import {
   serverTimestamp,
   type Unsubscribe,
 } from '../client/firestore';
-import type { Goal, GoalProgress } from '@dojodash/core/models';
+import type { Goal, GoalProgress } from '@dojodash/core';
 
 const CLUBS_COLLECTION = 'clubs';
 const GOALS_SUBCOLLECTION = 'goals';

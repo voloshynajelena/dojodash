@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   type Unsubscribe,
 } from '../client/firestore';
-import type { Group, GroupMember, GroupInvite } from '@dojodash/core/models';
+import type { Group, GroupMember, GroupInvite } from '@dojodash/core';
 
 const CLUBS_COLLECTION = 'clubs';
 const GROUPS_SUBCOLLECTION = 'groups';
@@ -169,6 +169,53 @@ export function subscribeToGroupMembers(
   });
 }
 
+// Generate a random invite code
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+export async function createGroupInvite(
+  clubId: string,
+  groupId: string,
+  createdBy: string,
+  expiresInDays = 7,
+  maxUses = 10
+): Promise<GroupInvite> {
+  const db = getFirestoreDb();
+  const colRef = collection(
+    db,
+    CLUBS_COLLECTION,
+    clubId,
+    GROUPS_SUBCOLLECTION,
+    groupId,
+    INVITES_SUBCOLLECTION
+  );
+  const docRef = doc(colRef);
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+
+  const invite: Omit<GroupInvite, 'id'> = {
+    clubId,
+    groupId,
+    code: generateInviteCode(),
+    createdBy,
+    expiresAt: { seconds: Math.floor(expiresAt.getTime() / 1000), nanoseconds: 0 },
+    maxUses,
+    usedCount: 0,
+    createdAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+  };
+
+  await setDoc(docRef, invite);
+
+  return { id: docRef.id, ...invite };
+}
+
 export async function getInviteByCode(code: string): Promise<GroupInvite | null> {
   const db = getFirestoreDb();
   const clubsRef = collection(db, CLUBS_COLLECTION);
@@ -193,11 +240,33 @@ export async function getInviteByCode(code: string): Promise<GroupInvite | null>
       for (const inviteDoc of invitesSnap.docs) {
         const data = inviteDoc.data() as GroupInvite;
         if (data.code === code) {
-          return { id: inviteDoc.id, ...data };
+          return { ...data, id: inviteDoc.id };
         }
       }
     }
   }
 
   return null;
+}
+
+export async function incrementInviteUsedCount(
+  clubId: string,
+  groupId: string,
+  inviteId: string
+): Promise<void> {
+  const db = getFirestoreDb();
+  const docRef = doc(
+    db,
+    CLUBS_COLLECTION,
+    clubId,
+    GROUPS_SUBCOLLECTION,
+    groupId,
+    INVITES_SUBCOLLECTION,
+    inviteId
+  );
+  const snapshot = await getDoc(docRef);
+  if (snapshot.exists()) {
+    const data = snapshot.data() as GroupInvite;
+    await updateDoc(docRef, { usedCount: (data.usedCount || 0) + 1 });
+  }
 }

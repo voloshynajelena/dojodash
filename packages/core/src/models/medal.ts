@@ -12,9 +12,18 @@ export interface MedalTemplate {
   isActive: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  // Championship medals - transferable, only one holder at a time
+  isChampionship?: boolean;
+  currentHolderId?: string;
+  currentHolderName?: string;
+  // Visual customization
+  customText?: string; // Text displayed on the medal
+  shape?: MedalShape;
+  borderStyle?: 'solid' | 'double' | 'ribbon';
 }
 
 export type MedalCategory = 'achievement' | 'skill' | 'spirit' | 'competition' | 'special';
+export type MedalShape = 'circle' | 'star' | 'shield' | 'hexagon' | 'ribbon';
 
 export interface Medal {
   id: string;
@@ -32,6 +41,11 @@ export interface Medal {
   awardedAt: Timestamp;
   reason?: string;
   transferHistory?: MedalTransfer[];
+  // Championship medals
+  isChampionship?: boolean;
+  customText?: string;
+  shape?: MedalShape;
+  borderStyle?: 'solid' | 'double' | 'ribbon';
 }
 
 export interface MedalTransfer {

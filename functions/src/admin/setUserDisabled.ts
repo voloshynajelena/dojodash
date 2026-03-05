@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import type { AdminSetUserDisabledRequest, AdminSetUserDisabledResponse } from '@dojodash/core/contracts';
+import type { AdminSetUserDisabledRequest, AdminSetUserDisabledResponse } from '@dojodash/core';
 import { requireAdmin, createAuditLog } from '../utils';
 
 export const adminSetUserDisabled = onCall<

@@ -1,5 +1,5 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import type { NotificationType, NotificationData } from '@dojodash/core/models';
+import type { NotificationType, NotificationData } from '@dojodash/core';
 
 export interface NotificationInput {
   userId: string;

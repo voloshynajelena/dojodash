@@ -22,9 +22,14 @@ export interface GroupSchedule {
 export interface GroupMember {
   childId: string;
   childName: string;
-  parentUid: string;
+  parentUid?: string; // Optional - may not be linked yet
   joinedAt: Timestamp;
   status: GroupMemberStatus;
+  // Contact info (for coach-added members)
+  instagram?: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
 }
 
 export type GroupMemberStatus = 'active' | 'inactive' | 'transferred';

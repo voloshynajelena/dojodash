@@ -3,8 +3,8 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { LoadingState } from '@dojodash/ui/components';
-import type { UserRole } from '@dojodash/core/models';
+import { LoadingState } from '@dojodash/ui';
+import type { UserRole } from '@dojodash/core';
 import type { ReactNode } from 'react';
 
 interface AuthGuardProps {

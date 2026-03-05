@@ -14,7 +14,7 @@ import {
   serverTimestamp,
   type Unsubscribe,
 } from '../client/firestore';
-import type { MedalTemplate, Medal } from '@dojodash/core/models';
+import type { MedalTemplate, Medal } from '@dojodash/core';
 
 const CLUBS_COLLECTION = 'clubs';
 const MEDAL_TEMPLATES_SUBCOLLECTION = 'medalTemplates';
@@ -149,6 +149,109 @@ export async function transferMedal(
     childId: toChildId,
     transferHistory: [...(medal.transferHistory || []), transfer],
   });
+}
+
+// Award or transfer a championship medal - only one holder at a time
+export async function awardChampionshipMedal(
+  clubId: string,
+  templateId: string,
+  toChildId: string,
+  toChildName: string,
+  groupId: string,
+  awardedBy: string,
+  reason?: string
+): Promise<{ medalId: string; wasTransferred: boolean; previousHolderId?: string }> {
+  const db = getFirestoreDb();
+
+  // Get the template
+  const templateRef = doc(db, CLUBS_COLLECTION, clubId, MEDAL_TEMPLATES_SUBCOLLECTION, templateId);
+  const templateSnap = await getDoc(templateRef);
+  if (!templateSnap.exists()) throw new Error('Medal template not found');
+
+  const template = templateSnap.data() as MedalTemplate;
+  if (!template.isChampionship) throw new Error('Template is not a championship medal');
+
+  const colRef = collection(db, CLUBS_COLLECTION, clubId, MEDALS_SUBCOLLECTION);
+  const now = { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 };
+
+  // Check if there's a current holder
+  if (template.currentHolderId) {
+    // Find the existing medal and transfer it
+    const existingQuery = query(
+      colRef,
+      where('templateId', '==', templateId),
+      where('childId', '==', template.currentHolderId)
+    );
+    const existingSnap = await getDocs(existingQuery);
+    const existingDocs = existingSnap.docs;
+
+    if (existingDocs.length > 0) {
+      const existingMedal = existingDocs[0]!;
+      const medalData = existingMedal.data() as Medal;
+
+      // Update the medal with transfer
+      const transfer = {
+        fromChildId: template.currentHolderId,
+        toChildId,
+        transferredBy: awardedBy,
+        transferredAt: now,
+        reason,
+      };
+
+      await updateDoc(existingMedal.ref, {
+        childId: toChildId,
+        transferHistory: [...(medalData.transferHistory || []), transfer],
+      });
+
+      // Update template with new holder
+      await updateDoc(templateRef, {
+        currentHolderId: toChildId,
+        currentHolderName: toChildName,
+        updatedAt: serverTimestamp(),
+      });
+
+      return {
+        medalId: existingMedal.id,
+        wasTransferred: true,
+        previousHolderId: template.currentHolderId,
+      };
+    }
+  }
+
+  // No current holder - create new medal
+  const docRef = doc(colRef);
+  const medalData: Omit<Medal, 'id'> = {
+    templateId,
+    childId: toChildId,
+    clubId,
+    groupId,
+    name: template.name,
+    description: template.description,
+    color: template.color,
+    xpValue: template.xpValue,
+    category: template.category,
+    awardedBy,
+    awardedAt: now,
+    reason,
+    isChampionship: true,
+    customText: template.customText,
+    shape: template.shape,
+    borderStyle: template.borderStyle,
+  };
+
+  await setDoc(docRef, medalData);
+
+  // Update template with current holder
+  await updateDoc(templateRef, {
+    currentHolderId: toChildId,
+    currentHolderName: toChildName,
+    updatedAt: serverTimestamp(),
+  });
+
+  return {
+    medalId: docRef.id,
+    wasTransferred: false,
+  };
 }
 
 export function subscribeToChildMedals(

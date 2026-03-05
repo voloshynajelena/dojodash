@@ -16,6 +16,7 @@ import {
   onSnapshot,
   serverTimestamp,
   Timestamp,
+  writeBatch,
   type Firestore,
   type DocumentReference,
   type CollectionReference,
@@ -23,6 +24,7 @@ import {
   type QueryConstraint,
   type DocumentData,
   type Unsubscribe,
+  type WriteBatch,
 } from 'firebase/firestore';
 import { getFirebaseApp } from './app';
 import { isEmulatorMode } from './config';
@@ -60,10 +62,12 @@ export {
   onSnapshot,
   serverTimestamp,
   Timestamp,
+  writeBatch,
   type DocumentReference,
   type CollectionReference,
   type Query,
   type QueryConstraint,
   type DocumentData,
   type Unsubscribe,
+  type WriteBatch,
 };

@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { User } from 'firebase/auth';
-import type { UserRole } from '@dojodash/core/models';
-import type { AuthClaims } from '@dojodash/core/contracts';
+import type { UserRole, AuthClaims } from '@dojodash/core';
 import {
   onAuthChange,
   signIn as firebaseSignIn,
@@ -12,8 +11,9 @@ import {
   logout as firebaseLogout,
   resetPassword as firebaseResetPassword,
   getIdTokenClaims,
-} from '@dojodash/firebase/client';
-import { createUser, getUser } from '@dojodash/firebase/dal';
+  createUser,
+  getUser,
+} from '@dojodash/firebase';
 
 export interface AuthState {
   user: User | null;

@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import type { AdminCreateClubRequest, AdminCreateClubResponse } from '@dojodash/core/contracts';
-import { DEFAULT_CLUB_SETTINGS } from '@dojodash/core/models';
+import type { AdminCreateClubRequest, AdminCreateClubResponse } from '@dojodash/core';
+import { DEFAULT_CLUB_SETTINGS } from '@dojodash/core';
 import { requireAdmin, createAuditLog } from '../utils';
 
 export const adminCreateClub = onCall<AdminCreateClubRequest, Promise<AdminCreateClubResponse>>(

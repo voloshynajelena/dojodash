@@ -12,7 +12,7 @@ import {
   serverTimestamp,
   type Unsubscribe,
 } from '../client/firestore';
-import type { Attendance, AttendanceSummary } from '@dojodash/core/models';
+import type { Attendance, AttendanceSummary } from '@dojodash/core';
 
 const CLUBS_COLLECTION = 'clubs';
 const SESSIONS_SUBCOLLECTION = 'sessions';
@@ -87,7 +87,7 @@ export async function getChildAttendanceHistory(
 export async function markAttendance(
   clubId: string,
   sessionId: string,
-  attendance: Omit<Attendance, 'id' | 'sessionId' | 'markedAt'>
+  attendance: Omit<Attendance, 'id' | 'sessionId' | 'markedAt'> & { childId: string }
 ): Promise<void> {
   const db = getFirestoreDb();
   const docRef = doc(

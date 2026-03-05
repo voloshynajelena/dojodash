@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { AppShell as MantineAppShell, Burger, Group, NavLink, Text, Avatar, Menu, Box, UnstyledButton } from '@mantine/core';
+import { AppShell as MantineAppShell, Burger, Group, NavLink, Text, Avatar, Menu, Box, UnstyledButton, ActionIcon, useMantineColorScheme } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useRouter, usePathname } from 'next/navigation';
 import {
@@ -18,9 +17,12 @@ import {
   IconUserShield,
   IconClipboardList,
   IconChartBar,
+  IconSun,
+  IconMoon,
+  IconTrophy,
 } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
-import type { UserRole } from '@dojodash/core/models';
+import type { UserRole } from '@dojodash/core';
 import type { ReactNode } from 'react';
 
 interface NavItem {
@@ -42,9 +44,7 @@ const coachNavItems: NavItem[] = [
   { label: 'Club', icon: <IconBuilding size={20} />, href: '/app/coach/club' },
   { label: 'Groups', icon: <IconUsers size={20} />, href: '/app/coach/groups' },
   { label: 'Schedule', icon: <IconCalendar size={20} />, href: '/app/coach/schedule' },
-  { label: 'Attendance', icon: <IconClipboardList size={20} />, href: '/app/coach/attendance' },
-  { label: 'Medals', icon: <IconMedal size={20} />, href: '/app/coach/medals' },
-  { label: 'Goals', icon: <IconTarget size={20} />, href: '/app/coach/goals' },
+  { label: 'Rewards', icon: <IconTrophy size={20} />, href: '/app/coach/rewards' },
 ];
 
 const familyNavItems: NavItem[] = [
@@ -74,6 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, claims, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
 
   const navItems = claims ? getNavItems(claims.role) : [];
 
@@ -96,25 +97,35 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Text>
           </Group>
 
-          <Menu shadow="md" width={200}>
-            <Menu.Target>
-              <UnstyledButton>
-                <Group gap="xs">
-                  <Avatar size="sm" radius="xl" color="brand">
-                    {user?.displayName?.[0]?.toUpperCase() ?? 'U'}
-                  </Avatar>
-                  <Box visibleFrom="sm">
-                    <Text size="sm" fw={500}>
-                      {user?.displayName ?? 'User'}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      {claims?.role ?? ''}
-                    </Text>
-                  </Box>
-                  <IconChevronDown size={14} />
-                </Group>
-              </UnstyledButton>
-            </Menu.Target>
+          <Group gap="sm">
+            <ActionIcon
+              variant="subtle"
+              size="lg"
+              onClick={() => toggleColorScheme()}
+              aria-label="Toggle color scheme"
+            >
+              {colorScheme === 'dark' ? <IconSun size={20} /> : <IconMoon size={20} />}
+            </ActionIcon>
+
+            <Menu shadow="md" width={200}>
+              <Menu.Target>
+                <UnstyledButton>
+                  <Group gap="xs">
+                    <Avatar size="sm" radius="xl" color="brand">
+                      {user?.displayName?.[0]?.toUpperCase() ?? 'U'}
+                    </Avatar>
+                    <Box visibleFrom="sm">
+                      <Text size="sm" fw={500}>
+                        {user?.displayName ?? 'User'}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {claims?.role ?? ''}
+                      </Text>
+                    </Box>
+                    <IconChevronDown size={14} />
+                  </Group>
+                </UnstyledButton>
+              </Menu.Target>
 
             <Menu.Dropdown>
               <Menu.Item
@@ -132,7 +143,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 Logout
               </Menu.Item>
             </Menu.Dropdown>
-          </Menu>
+            </Menu>
+          </Group>
         </Group>
       </MantineAppShell.Header>
 

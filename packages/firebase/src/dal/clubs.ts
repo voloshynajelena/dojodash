@@ -14,8 +14,8 @@ import {
   serverTimestamp,
   type Unsubscribe,
 } from '../client/firestore';
-import type { Club, ChildPublic } from '@dojodash/core/models';
-import { DEFAULT_CLUB_SETTINGS } from '@dojodash/core/models';
+import type { Club, ChildPublic } from '@dojodash/core';
+import { DEFAULT_CLUB_SETTINGS } from '@dojodash/core';
 
 const CLUBS_COLLECTION = 'clubs';
 const CHILDREN_PUBLIC_SUBCOLLECTION = 'childrenPublic';

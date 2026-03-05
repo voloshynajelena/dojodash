@@ -1,5 +1,4 @@
-import type { UserRole } from '@dojodash/core/models';
-import type { AuthClaims } from '@dojodash/core/contracts';
+import type { UserRole, AuthClaims } from '@dojodash/core';
 import { getAdminAuth } from './app';
 
 export async function setUserClaims(

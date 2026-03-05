@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   type Unsubscribe,
 } from '../client/firestore';
-import type { User, Child, ChildPrivacy, Notification } from '@dojodash/core/models';
+import type { User, Child, ChildPrivacy, Notification } from '@dojodash/core';
 
 const USERS_COLLECTION = 'users';
 const CHILDREN_SUBCOLLECTION = 'children';

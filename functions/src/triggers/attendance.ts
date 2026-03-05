@@ -1,6 +1,6 @@
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { calculateLevel, calculateStreakBonus } from '@dojodash/core/logic';
+import { calculateLevel, calculateStreakBonus } from '@dojodash/core';
 import { createNotification } from '../utils';
 
 export const onAttendanceWrite = onDocumentWritten(

@@ -5,6 +5,7 @@ export interface Club {
   name: string;
   slug: string;
   logoURL?: string;
+  primaryColor?: string;
   timezone: string;
   address?: ClubAddress;
   contact?: ClubContact;

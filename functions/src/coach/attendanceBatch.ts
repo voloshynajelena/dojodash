@@ -1,6 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import type { ApplyAttendanceBatchRequest, ApplyAttendanceBatchResponse } from '@dojodash/core/contracts';
+import type { ApplyAttendanceBatchRequest, ApplyAttendanceBatchResponse } from '@dojodash/core';
 import { requireClubAccess, createAuditLog } from '../utils';
 
 export const applyAttendanceBatch = onCall<
