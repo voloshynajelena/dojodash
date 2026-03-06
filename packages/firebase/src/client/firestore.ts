@@ -2,6 +2,7 @@ import {
   getFirestore,
   connectFirestoreEmulator,
   collection,
+  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -48,6 +49,7 @@ export function getFirestoreDb(): Firestore {
 
 export {
   collection,
+  collectionGroup,
   doc,
   getDoc,
   getDocs,

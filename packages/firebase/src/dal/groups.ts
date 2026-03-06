@@ -1,6 +1,7 @@
 import {
   getFirestoreDb,
   collection,
+  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -8,6 +9,7 @@ import {
   updateDoc,
   deleteDoc,
   query,
+  where,
   orderBy,
   onSnapshot,
   serverTimestamp,
@@ -218,35 +220,25 @@ export async function createGroupInvite(
 
 export async function getInviteByCode(code: string): Promise<GroupInvite | null> {
   const db = getFirestoreDb();
-  const clubsRef = collection(db, CLUBS_COLLECTION);
-  const clubsSnap = await getDocs(clubsRef);
 
-  for (const clubDoc of clubsSnap.docs) {
-    const groupsRef = collection(db, CLUBS_COLLECTION, clubDoc.id, GROUPS_SUBCOLLECTION);
-    const groupsSnap = await getDocs(groupsRef);
+  // Use collection group query for efficient lookup across all invites
+  const invitesQuery = query(
+    collectionGroup(db, INVITES_SUBCOLLECTION),
+    where('code', '==', code)
+  );
 
-    for (const groupDoc of groupsSnap.docs) {
-      const invitesRef = collection(
-        db,
-        CLUBS_COLLECTION,
-        clubDoc.id,
-        GROUPS_SUBCOLLECTION,
-        groupDoc.id,
-        INVITES_SUBCOLLECTION
-      );
-      const q = query(invitesRef);
-      const invitesSnap = await getDocs(q);
+  const snapshot = await getDocs(invitesQuery);
 
-      for (const inviteDoc of invitesSnap.docs) {
-        const data = inviteDoc.data() as GroupInvite;
-        if (data.code === code) {
-          return { ...data, id: inviteDoc.id };
-        }
-      }
-    }
+  if (snapshot.empty) {
+    return null;
   }
 
-  return null;
+  const inviteDoc = snapshot.docs[0];
+  if (!inviteDoc) {
+    return null;
+  }
+
+  return { id: inviteDoc.id, ...inviteDoc.data() } as GroupInvite;
 }
 
 export async function incrementInviteUsedCount(
