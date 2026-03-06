@@ -18,6 +18,7 @@ function JoinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const codeFromUrl = searchParams.get('code');
+  const autoJoin = searchParams.get('autojoin') === 'true';
 
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -27,6 +28,7 @@ function JoinContent() {
   const [error, setError] = useState<string | null>(null);
   const [joined, setJoined] = useState(false);
   const [alreadyMember, setAlreadyMember] = useState(false);
+  const [hasAutoJoined, setHasAutoJoined] = useState(false);
 
   const form = useForm({
     initialValues: {
@@ -39,6 +41,14 @@ function JoinContent() {
       verifyCode(codeFromUrl);
     }
   }, [codeFromUrl]);
+
+  // Auto-join after redirect from login
+  useEffect(() => {
+    if (autoJoin && user && invite && group && !alreadyMember && !hasAutoJoined && !joined) {
+      setHasAutoJoined(true);
+      handleJoin();
+    }
+  }, [autoJoin, user, invite, group, alreadyMember, hasAutoJoined, joined]);
 
   const verifyCode = async (code: string) => {
     setVerifying(true);
@@ -207,20 +217,30 @@ function JoinContent() {
             </Group>
 
             {!user ? (
-              <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
-                <Text size="sm">
-                  Please{' '}
+              <Stack gap="sm">
+                <Text size="sm" c="dimmed" ta="center">
+                  Create an account or log in to join this group
+                </Text>
+                <Button
+                  fullWidth
+                  size="lg"
+                  onClick={() => router.push(`/login?redirect=${encodeURIComponent(`/join?code=${invite.code}&autojoin=true`)}`)}
+                  leftSection={<IconCheck size={18} />}
+                >
+                  Sign up to Join {group.name}
+                </Button>
+                <Text size="xs" c="dimmed" ta="center">
+                  Already have an account?{' '}
                   <Text
                     component="a"
-                    href={`/login?redirect=/join?code=${invite.code}`}
+                    href={`/login?redirect=${encodeURIComponent(`/join?code=${invite.code}&autojoin=true`)}`}
                     c="blue"
                     style={{ cursor: 'pointer' }}
                   >
-                    log in or create an account
-                  </Text>{' '}
-                  to join this group.
+                    Log in
+                  </Text>
                 </Text>
-              </Alert>
+              </Stack>
             ) : alreadyMember ? (
               <Alert color="blue" icon={<IconCheck size={16} />}>
                 <Text size="sm">

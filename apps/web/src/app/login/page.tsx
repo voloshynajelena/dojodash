@@ -16,6 +16,7 @@ import {
   Alert,
   Tabs,
   Loader,
+  Box,
 } from '@mantine/core';
 import { useForm, zodResolver } from '@mantine/form';
 import { IconAlertCircle } from '@tabler/icons-react';
@@ -25,12 +26,14 @@ import { useAuth } from '@/hooks/useAuth';
 type TabValue = 'login' | 'register' | 'reset';
 
 function LoginForm() {
-  const [activeTab, setActiveTab] = useState<TabValue>('login');
-  const [resetSent, setResetSent] = useState(false);
-  const { signIn, signUp, resetPassword, loading, error, getRolePath } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
+  const isFromInvite = redirect?.includes('/join?code=');
+
+  const [activeTab, setActiveTab] = useState<TabValue>(isFromInvite ? 'register' : 'login');
+  const [resetSent, setResetSent] = useState(false);
+  const { signIn, signUp, resetPassword, loading, error, getRolePath } = useAuth();
 
   const loginForm = useForm({
     initialValues: { email: '', password: '' },
@@ -59,7 +62,8 @@ function LoginForm() {
   const handleRegister = async (values: typeof registerForm.values) => {
     try {
       await signUp(values.email, values.password, values.displayName);
-      router.push('/app/family');
+      // Redirect to the specified URL or family dashboard
+      router.push(redirect ?? '/app/family');
     } catch {
       // Error is handled by useAuth
     }
@@ -76,6 +80,13 @@ function LoginForm() {
 
   return (
     <Paper radius="md" p="xl" withBorder>
+      {isFromInvite && (
+        <Alert color="blue" mb="md" variant="light">
+          <Text size="sm">
+            Create an account to join the group. You'll be redirected back after signing up.
+          </Text>
+        </Alert>
+      )}
       <Tabs value={activeTab} onChange={(v) => setActiveTab(v as TabValue)}>
         <Tabs.List grow mb="md">
           <Tabs.Tab value="login">Login</Tabs.Tab>
