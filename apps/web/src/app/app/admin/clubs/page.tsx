@@ -112,8 +112,6 @@ export default function AdminClubsPage() {
           name: values.name,
           slug: values.slug,
           timezone: values.timezone,
-          ownerId: '', // Will be set by admin
-          status: 'active',
         });
         notifications.show({
           title: 'Success',
@@ -185,9 +183,7 @@ export default function AdminClubsPage() {
                   </Table.Td>
                   <Table.Td>{club.memberCount || 0}</Table.Td>
                   <Table.Td>
-                    <Badge color={club.status === 'active' ? 'green' : 'gray'}>
-                      {club.status || 'active'}
-                    </Badge>
+                    <Badge color="green">Active</Badge>
                   </Table.Td>
                   <Table.Td>
                     <Button
