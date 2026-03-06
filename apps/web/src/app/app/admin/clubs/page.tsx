@@ -11,6 +11,7 @@ import { notifications } from '@mantine/notifications';
 import { IconPlus } from '@tabler/icons-react';
 import { getAllClubs, createClub, updateClub, getClubMembers } from '@dojodash/firebase';
 import type { Club } from '@dojodash/core';
+import { DEFAULT_CLUB_SETTINGS } from '@dojodash/core';
 
 interface ClubWithStats extends Club {
   coachCount?: number;
@@ -112,6 +113,7 @@ export default function AdminClubsPage() {
           name: values.name,
           slug: values.slug,
           timezone: values.timezone,
+          settings: DEFAULT_CLUB_SETTINGS,
         });
         notifications.show({
           title: 'Success',
