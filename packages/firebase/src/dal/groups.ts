@@ -221,7 +221,7 @@ export async function createGroupInvite(
 export async function getInviteByCode(code: string): Promise<GroupInvite | null> {
   const db = getFirestoreDb();
 
-  console.log('[getInviteByCode] Searching for code:', code);
+  console.log('[getInviteByCode] v2 - Searching for code:', code, 'at', new Date().toISOString());
 
   // First try collection group query (works when authenticated)
   try {

@@ -71,19 +71,25 @@ function JoinContent() {
 
       setInvite(foundInvite);
 
-      // Get group and club info
-      const [groupData, clubData, members] = await Promise.all([
+      // Get group and club info (public data)
+      const [groupData, clubData] = await Promise.all([
         getGroup(foundInvite.clubId, foundInvite.groupId),
         getClub(foundInvite.clubId),
-        getGroupMembers(foundInvite.clubId, foundInvite.groupId),
       ]);
 
       setGroup(groupData);
       setClub(clubData);
 
-      // Check if user is already a member
-      if (user && members.some(m => m.childId === user.uid || m.parentUid === user.uid)) {
-        setAlreadyMember(true);
+      // Check if user is already a member (only if logged in - members require auth)
+      if (user) {
+        try {
+          const members = await getGroupMembers(foundInvite.clubId, foundInvite.groupId);
+          if (members.some(m => m.childId === user.uid || m.parentUid === user.uid)) {
+            setAlreadyMember(true);
+          }
+        } catch (err) {
+          console.warn('Could not check membership status:', err);
+        }
       }
     } catch (err: any) {
       console.error('Error verifying code:', err);

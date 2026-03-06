@@ -70,6 +70,14 @@ export function useAuth() {
         clubIds: [],
         disabled: false,
       });
+
+      // Wait a moment for the Cloud Function to set claims, then refresh token
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await user.getIdToken(true); // Force refresh to get new claims
+
+      // Update state with new claims
+      const claims = (await getIdTokenClaims()) as AuthClaims | null;
+      setState({ user, claims, loading: false, error: null });
     } catch (error) {
       setState((prev) => ({
         ...prev,
