@@ -63,7 +63,8 @@ service cloud.firestore {
 
     // Clubs collection
     match /clubs/{clubId} {
-      allow read: if isAuthenticated();
+      // Allow public read for basic club info (needed for invite verification)
+      allow read: if true;
       allow create: if isAdmin();
       allow update: if hasClubAccess(clubId);
       allow delete: if isAdmin();
@@ -76,7 +77,8 @@ service cloud.firestore {
 
       // Groups subcollection
       match /groups/{groupId} {
-        allow read: if isAuthenticated();
+        // Allow public read for basic group info (needed for invite verification)
+        allow read: if true;
         allow create: if hasClubAccess(clubId);
         allow update: if hasClubAccess(clubId);
         allow delete: if hasClubAccess(clubId);
@@ -87,9 +89,9 @@ service cloud.firestore {
           allow write: if hasClubAccess(clubId);
         }
 
-        // Invites
+        // Invites - allow public read for verification
         match /invites/{inviteId} {
-          allow read: if isAuthenticated();
+          allow read: if true;
           allow create: if hasClubAccess(clubId);
           allow update: if isAuthenticated(); // For claiming
           allow delete: if hasClubAccess(clubId);

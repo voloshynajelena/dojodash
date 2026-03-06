@@ -223,31 +223,64 @@ export async function getInviteByCode(code: string): Promise<GroupInvite | null>
 
   console.log('[getInviteByCode] Searching for code:', code);
 
+  // First try collection group query (works when authenticated)
   try {
-    // Use collection group query for efficient lookup across all invites
     const invitesQuery = query(
       collectionGroup(db, INVITES_SUBCOLLECTION),
       where('code', '==', code)
     );
 
     const snapshot = await getDocs(invitesQuery);
-    console.log('[getInviteByCode] Query returned', snapshot.size, 'results');
+    console.log('[getInviteByCode] Collection group query returned', snapshot.size, 'results');
 
-    if (snapshot.empty) {
-      console.log('[getInviteByCode] No invite found with code:', code);
-      return null;
+    if (!snapshot.empty) {
+      const inviteDoc = snapshot.docs[0];
+      if (inviteDoc) {
+        const invite = { id: inviteDoc.id, ...inviteDoc.data() } as GroupInvite;
+        console.log('[getInviteByCode] Found invite:', invite);
+        return invite;
+      }
+    }
+  } catch (error: any) {
+    console.warn('[getInviteByCode] Collection group query failed, trying fallback:', error?.code);
+  }
+
+  // Fallback: search in known club (demo-club) by iterating through groups
+  try {
+    console.log('[getInviteByCode] Using fallback search in demo-club');
+    const clubId = 'demo-club';
+
+    // Get all groups in the club
+    const groupsRef = collection(db, CLUBS_COLLECTION, clubId, GROUPS_SUBCOLLECTION);
+    const groupsSnapshot = await getDocs(groupsRef);
+
+    // Search through each group's invites
+    for (const groupDoc of groupsSnapshot.docs) {
+      const invitesRef = collection(
+        db,
+        CLUBS_COLLECTION,
+        clubId,
+        GROUPS_SUBCOLLECTION,
+        groupDoc.id,
+        INVITES_SUBCOLLECTION
+      );
+      const invitesQuery = query(invitesRef, where('code', '==', code));
+      const invitesSnapshot = await getDocs(invitesQuery);
+
+      if (!invitesSnapshot.empty) {
+        const inviteDoc = invitesSnapshot.docs[0];
+        if (inviteDoc) {
+          const invite = { id: inviteDoc.id, ...inviteDoc.data() } as GroupInvite;
+          console.log('[getInviteByCode] Found invite via fallback:', invite);
+          return invite;
+        }
+      }
     }
 
-    const inviteDoc = snapshot.docs[0];
-    if (!inviteDoc) {
-      return null;
-    }
-
-    const invite = { id: inviteDoc.id, ...inviteDoc.data() } as GroupInvite;
-    console.log('[getInviteByCode] Found invite:', invite);
-    return invite;
-  } catch (error) {
-    console.error('[getInviteByCode] Error:', error);
+    console.log('[getInviteByCode] No invite found with code:', code);
+    return null;
+  } catch (error: any) {
+    console.error('[getInviteByCode] Fallback search failed:', error);
     throw error;
   }
 }
