@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Title, Text, Group, Stack, Badge, Avatar, Loader, Center,
-  TextInput, Paper, Table, Select, Button, Affix, Transition, ActionIcon
+  TextInput, Paper, Table, Select, Button
 } from '@mantine/core';
-import { useWindowScroll } from '@mantine/hooks';
-import { IconUsers, IconSearch, IconBrandInstagram, IconMail, IconPhone, IconArrowLeft, IconArrowUp } from '@tabler/icons-react';
+import { IconUsers, IconSearch, IconBrandInstagram, IconMail, IconPhone, IconArrowLeft } from '@tabler/icons-react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { getGroups, getGroupMembers } from '@dojodash/firebase';
@@ -23,7 +22,6 @@ export default function CoachMembersPage() {
   const { claims } = useAuth();
   const router = useRouter();
   const clubId = claims?.clubIds?.[0] || '';
-  const [scroll, scrollTo] = useWindowScroll();
 
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<GroupType[]>([]);
@@ -107,7 +105,7 @@ export default function CoachMembersPage() {
           <Button
             variant="subtle"
             leftSection={<IconArrowLeft size={16} />}
-            onClick={() => router.push('/app/coach')}
+            onClick={() => router.back()}
           >
             Back
           </Button>
@@ -216,22 +214,6 @@ export default function CoachMembersPage() {
           {filterGroupId && ` in ${groups.find(g => g.id === filterGroupId)?.name}`}
         </Text>
       </Stack>
-
-      <Affix position={{ bottom: 20, right: 20 }}>
-        <Transition transition="slide-up" mounted={scroll.y > 0}>
-          {(transitionStyles) => (
-            <ActionIcon
-              size="lg"
-              radius="xl"
-              variant="filled"
-              style={transitionStyles}
-              onClick={() => scrollTo({ y: 0 })}
-            >
-              <IconArrowUp size={18} />
-            </ActionIcon>
-          )}
-        </Transition>
-      </Affix>
     </AuthGuard>
   );
 }

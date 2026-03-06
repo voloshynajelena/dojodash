@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AppShell as MantineAppShell, Burger, Group, NavLink, Text, Avatar, Menu, Box, UnstyledButton, ActionIcon, useMantineColorScheme, Badge, Indicator } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { AppShell as MantineAppShell, Burger, Group, NavLink, Text, Avatar, Menu, Box, UnstyledButton, ActionIcon, useMantineColorScheme, Badge, Affix, Transition } from '@mantine/core';
+import { useDisclosure, useWindowScroll } from '@mantine/hooks';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   IconHome,
@@ -21,6 +21,7 @@ import {
   IconSun,
   IconMoon,
   IconTrophy,
+  IconArrowUp,
 } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
 import { subscribeToNotifications, getClub, getMemberGroups } from '@dojodash/firebase';
@@ -76,6 +77,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const [scroll, scrollTo] = useWindowScroll();
   const [unreadCount, setUnreadCount] = useState(0);
   const [clubName, setClubName] = useState<string | null>(null);
 
@@ -232,6 +234,23 @@ export function AppShell({ children }: { children: ReactNode }) {
       </MantineAppShell.Navbar>
 
       <MantineAppShell.Main>{children}</MantineAppShell.Main>
+
+      <Affix position={{ bottom: 20, right: 20 }}>
+        <Transition transition="slide-up" mounted={scroll.y > 100}>
+          {(transitionStyles) => (
+            <ActionIcon
+              size="lg"
+              radius="xl"
+              variant="filled"
+              style={transitionStyles}
+              onClick={() => scrollTo({ y: 0 })}
+              aria-label="Scroll to top"
+            >
+              <IconArrowUp size={18} />
+            </ActionIcon>
+          )}
+        </Transition>
+      </Affix>
     </MantineAppShell>
   );
 }
