@@ -1,19 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import { Container, Title, Text, Card, Stack, TextInput, Button, Group, Divider, PasswordInput, Loader, Center } from '@mantine/core';
+import { useState, useEffect } from 'react';
+import { Container, Title, Text, Card, Stack, TextInput, Button, Group, PasswordInput, Loader, Center } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { updateUserProfile, updateUser } from '@dojodash/firebase';
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [displayName, setDisplayName] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+
+  useEffect(() => {
+    if (user?.displayName) {
+      setDisplayName(user.displayName);
+    }
+  }, [user?.displayName]);
 
   if (!user) {
     return (
@@ -24,9 +31,24 @@ export default function SettingsPage() {
   }
 
   const handleSaveProfile = async () => {
+    if (!displayName.trim()) {
+      notifications.show({
+        title: 'Error',
+        message: 'Display name cannot be empty',
+        color: 'red',
+      });
+      return;
+    }
+
     try {
       setSavingProfile(true);
-      // In a real app, you'd update the user profile here
+
+      // Update Firebase Auth profile
+      await updateUserProfile(displayName.trim());
+
+      // Update Firestore user document
+      await updateUser(user.uid, { displayName: displayName.trim() });
+
       notifications.show({
         title: 'Success',
         message: 'Profile updated successfully',
@@ -160,14 +182,6 @@ export default function SettingsPage() {
           </Stack>
         </Card>
 
-        <Card withBorder p="lg">
-          <Title order={4} mb="md">Notifications</Title>
-          <Stack gap="md">
-            <Text size="sm" c="dimmed">
-              Notification preferences coming soon.
-            </Text>
-          </Stack>
-        </Card>
       </Stack>
     </Container>
   );

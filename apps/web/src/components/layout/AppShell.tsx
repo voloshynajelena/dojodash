@@ -45,6 +45,7 @@ const coachNavItems: NavItem[] = [
   { label: 'Groups', icon: <IconUsers size={20} />, href: '/app/coach/groups' },
   { label: 'Schedule', icon: <IconCalendar size={20} />, href: '/app/coach/schedule' },
   { label: 'Rewards', icon: <IconTrophy size={20} />, href: '/app/coach/rewards' },
+  { label: 'Notifications', icon: <IconBell size={20} />, href: '/app/coach/notifications' },
 ];
 
 const familyNavItems: NavItem[] = [
@@ -53,7 +54,6 @@ const familyNavItems: NavItem[] = [
   { label: 'Stats', icon: <IconChartBar size={20} />, href: '/app/family/stats' },
   { label: 'Medals', icon: <IconMedal size={20} />, href: '/app/family/medals' },
   { label: 'Notifications', icon: <IconBell size={20} />, href: '/app/family/notifications' },
-  { label: 'Settings', icon: <IconSettings size={20} />, href: '/app/family/settings' },
 ];
 
 function getNavItems(role: UserRole): NavItem[] {

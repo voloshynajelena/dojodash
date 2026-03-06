@@ -22,6 +22,8 @@ export type NotificationType =
   | 'achievement_earned'
   | 'group_joined'
   | 'invite_received'
+  | 'member_joined'
+  | 'member_left'
   | 'system';
 
 export interface NotificationData {
@@ -29,10 +31,13 @@ export interface NotificationData {
   groupId?: string;
   sessionId?: string;
   childId?: string;
+  childName?: string;
   medalId?: string;
   goalId?: string;
   achievementId?: string;
   actionUrl?: string;
+  userId?: string;
+  userEmail?: string;
 }
 
 export interface NotificationPreferences {

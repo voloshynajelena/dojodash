@@ -1,5 +1,7 @@
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+import { createNotification } from '../utils/notifications';
 
 // Inline types to avoid workspace dependency issues in Cloud Functions
 type UserRole = 'ADMIN' | 'COACH' | 'FAMILY';
@@ -48,9 +50,47 @@ export const onUserCreate = onDocumentCreated(
 
       await auth.setCustomUserClaims(uid, claims);
       console.log(`Successfully set claims for user ${uid}`);
+
+      // Notify coaches when a new family signs up
+      if (userData.role === 'FAMILY') {
+        await notifyCoachesOfNewUser(userData);
+      }
     } catch (error) {
       console.error(`Failed to set claims for user ${uid}:`, error);
       throw error;
     }
   }
 );
+
+/**
+ * Notify all coaches in the same clubs as the new family user
+ */
+async function notifyCoachesOfNewUser(userData: UserData): Promise<void> {
+  const db = getFirestore();
+
+  // Get all coaches to notify
+  const coachesSnapshot = await db
+    .collection('users')
+    .where('role', '==', 'COACH')
+    .get();
+
+  // Notify each coach
+  const notifications = coachesSnapshot.docs.map(async (coachDoc) => {
+    try {
+      await createNotification({
+        userId: coachDoc.id,
+        type: 'member_joined',
+        title: 'New User Signed Up',
+        body: `${userData.displayName || userData.email} has joined.`,
+        data: {
+          userId: userData.uid,
+          userEmail: userData.email,
+        },
+      });
+    } catch (err) {
+      console.error(`Failed to notify coach ${coachDoc.id}:`, err);
+    }
+  });
+
+  await Promise.all(notifications);
+}

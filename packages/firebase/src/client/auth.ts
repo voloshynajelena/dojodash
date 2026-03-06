@@ -80,3 +80,9 @@ export async function getIdTokenClaims(): Promise<Record<string, unknown> | null
   const result = await user.getIdTokenResult();
   return result.claims as Record<string, unknown>;
 }
+
+export async function updateUserProfile(displayName: string): Promise<void> {
+  const user = getCurrentUser();
+  if (!user) throw new Error('No user logged in');
+  await updateProfile(user, { displayName });
+}

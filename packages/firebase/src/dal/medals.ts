@@ -208,13 +208,13 @@ export async function awardChampionshipMedal(
       const medalData = existingMedal.data() as Medal;
 
       // Update the medal with transfer
-      const transfer = {
+      const transfer = removeUndefined({
         fromChildId: template.currentHolderId,
         toChildId,
         transferredBy: awardedBy,
         transferredAt: now,
         reason,
-      };
+      });
 
       await updateDoc(existingMedal.ref, {
         childId: toChildId,
@@ -257,7 +257,9 @@ export async function awardChampionshipMedal(
     borderStyle: template.borderStyle,
   };
 
-  await setDoc(docRef, medalData);
+  // Remove undefined values before saving to Firestore
+  const cleanMedalData = removeUndefined(medalData);
+  await setDoc(docRef, cleanMedalData);
 
   // Update template with current holder
   await updateDoc(templateRef, {

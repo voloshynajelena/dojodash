@@ -10,6 +10,8 @@ export const NOTIFICATION_TITLES: Record<NotificationType, string> = {
   achievement_earned: 'Achievement Unlocked!',
   group_joined: 'Joined Group',
   invite_received: 'Invitation Received',
+  member_joined: 'New Member',
+  member_left: 'Member Left',
   system: 'System Notice',
 };
 
@@ -23,6 +25,8 @@ export const NOTIFICATION_ICONS: Record<NotificationType, string> = {
   achievement_earned: 'star',
   group_joined: 'users',
   invite_received: 'mail',
+  member_joined: 'user-plus',
+  member_left: 'user-minus',
   system: 'info',
 };
 
@@ -36,5 +40,7 @@ export const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   achievement_earned: 'violet',
   group_joined: 'teal',
   invite_received: 'indigo',
+  member_joined: 'teal',
+  member_left: 'orange',
   system: 'gray',
 };

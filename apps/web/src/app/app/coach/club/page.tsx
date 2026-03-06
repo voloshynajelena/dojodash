@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Container, Title, Text, Card, TextInput, Button, Stack, Group,
-  ColorInput, NumberInput, Image, FileButton, Loader, Center, Avatar
+  ColorInput, NumberInput, Image, FileButton, Loader, Center, Avatar, Select
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -11,6 +11,27 @@ import { IconUpload, IconPhoto } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getClub, updateClub, uploadClubLogo } from '@dojodash/firebase';
 import type { Club } from '@dojodash/core';
+
+const TIMEZONES = [
+  { value: 'America/New_York', label: 'Eastern Time (ET)' },
+  { value: 'America/Chicago', label: 'Central Time (CT)' },
+  { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+  { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HT)' },
+  { value: 'America/Phoenix', label: 'Arizona (No DST)' },
+  { value: 'America/Toronto', label: 'Toronto (ET)' },
+  { value: 'America/Vancouver', label: 'Vancouver (PT)' },
+  { value: 'Europe/London', label: 'London (GMT/BST)' },
+  { value: 'Europe/Paris', label: 'Paris (CET)' },
+  { value: 'Europe/Berlin', label: 'Berlin (CET)' },
+  { value: 'Europe/Kyiv', label: 'Kyiv (EET)' },
+  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+  { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
+  { value: 'Asia/Dubai', label: 'Dubai (GST)' },
+  { value: 'Australia/Sydney', label: 'Sydney (AEST)' },
+  { value: 'Australia/Melbourne', label: 'Melbourne (AEST)' },
+];
 
 export default function CoachClubPage() {
   const { claims } = useAuth();
@@ -238,9 +259,12 @@ export default function CoachClubPage() {
                 description="Used for branding throughout the app"
                 {...form.getInputProps('primaryColor')}
               />
-              <TextInput
+              <Select
                 label="Timezone"
-                placeholder="e.g., America/New_York"
+                description="Used for scheduling sessions"
+                placeholder="Select timezone"
+                data={TIMEZONES}
+                searchable
                 {...form.getInputProps('timezone')}
               />
             </Stack>

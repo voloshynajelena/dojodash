@@ -13,6 +13,8 @@ import {
   IconMail,
   IconInfoCircle,
   IconCircle,
+  IconUserPlus,
+  IconUserMinus,
 } from '@tabler/icons-react';
 import type { Notification, NotificationType } from '@dojodash/core/models';
 import { NOTIFICATION_COLORS } from '@dojodash/core/constants';
@@ -33,6 +35,8 @@ const typeIcons: Record<NotificationType, React.ReactNode> = {
   achievement_earned: <IconStar size={20} />,
   group_joined: <IconUsers size={20} />,
   invite_received: <IconMail size={20} />,
+  member_joined: <IconUserPlus size={20} />,
+  member_left: <IconUserMinus size={20} />,
   system: <IconInfoCircle size={20} />,
 };
 
