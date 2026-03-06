@@ -156,5 +156,10 @@ service cloud.firestore {
         allow delete: if hasClubAccess(clubId);
       }
     }
+
+    // Collection group query for invites (needed for code lookup)
+    match /{path=**}/invites/{inviteId} {
+      allow read: if isAuthenticated();
+    }
   }
 }
