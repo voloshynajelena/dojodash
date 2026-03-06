@@ -6,6 +6,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -118,6 +119,12 @@ export async function updateChildPrivacy(
     'privacy.showPhoto': privacy.showPhoto,
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function deleteChild(parentUid: string, childId: string): Promise<void> {
+  const db = getFirestoreDb();
+  const docRef = doc(db, USERS_COLLECTION, parentUid, CHILDREN_SUBCOLLECTION, childId);
+  await deleteDoc(docRef);
 }
 
 export function subscribeToChildren(

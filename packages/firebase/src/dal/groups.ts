@@ -325,3 +325,52 @@ export async function incrementInviteUsedCount(
     await updateDoc(docRef, { usedCount: (data.usedCount || 0) + 1 });
   }
 }
+
+// Get all groups a user is a member of (by parentUid or childId)
+export async function getMemberGroups(
+  uid: string
+): Promise<{ clubId: string; groupId: string; group: Group }[]> {
+  const db = getFirestoreDb();
+  const results: { clubId: string; groupId: string; group: Group }[] = [];
+
+  // For now, search in demo-club (can be extended to all clubs user has access to)
+  const clubId = 'demo-club';
+
+  try {
+    // Get all groups in the club
+    const groupsRef = collection(db, CLUBS_COLLECTION, clubId, GROUPS_SUBCOLLECTION);
+    const groupsSnapshot = await getDocs(groupsRef);
+
+    // Check membership in each group
+    for (const groupDoc of groupsSnapshot.docs) {
+      const membersRef = collection(
+        db,
+        CLUBS_COLLECTION,
+        clubId,
+        GROUPS_SUBCOLLECTION,
+        groupDoc.id,
+        MEMBERS_SUBCOLLECTION
+      );
+
+      // Check if user is a member (by childId or parentUid)
+      const memberQuery = query(membersRef);
+      const membersSnapshot = await getDocs(memberQuery);
+
+      const isMember = membersSnapshot.docs.some(
+        (doc) => {
+          const data = doc.data() as GroupMember;
+          return data.childId === uid || data.parentUid === uid;
+        }
+      );
+
+      if (isMember) {
+        const group = { id: groupDoc.id, ...groupDoc.data() } as Group;
+        results.push({ clubId, groupId: groupDoc.id, group });
+      }
+    }
+  } catch (error) {
+    console.error('[getMemberGroups] Error:', error);
+  }
+
+  return results;
+}
