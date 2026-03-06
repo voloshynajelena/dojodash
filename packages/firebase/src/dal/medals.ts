@@ -39,6 +39,13 @@ export async function getMedalTemplates(clubId: string): Promise<MedalTemplate[]
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as MedalTemplate);
 }
 
+// Helper to remove undefined values from an object
+function removeUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, v]) => v !== undefined)
+  ) as Partial<T>;
+}
+
 export async function createMedalTemplate(
   clubId: string,
   template: Omit<MedalTemplate, 'id' | 'clubId' | 'isActive' | 'createdAt' | 'updatedAt'>
@@ -46,8 +53,9 @@ export async function createMedalTemplate(
   const db = getFirestoreDb();
   const colRef = collection(db, CLUBS_COLLECTION, clubId, MEDAL_TEMPLATES_SUBCOLLECTION);
   const docRef = doc(colRef);
+  const cleanTemplate = removeUndefined(template);
   await setDoc(docRef, {
-    ...template,
+    ...cleanTemplate,
     clubId,
     isActive: true,
     createdAt: serverTimestamp(),
@@ -63,8 +71,9 @@ export async function updateMedalTemplate(
 ): Promise<void> {
   const db = getFirestoreDb();
   const docRef = doc(db, CLUBS_COLLECTION, clubId, MEDAL_TEMPLATES_SUBCOLLECTION, templateId);
+  const cleanData = removeUndefined(data);
   await updateDoc(docRef, {
-    ...data,
+    ...cleanData,
     updatedAt: serverTimestamp(),
   });
 }
