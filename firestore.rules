@@ -24,7 +24,7 @@ service cloud.firestore {
     }
 
     function hasClubAccess(clubId) {
-      return isAdmin() || (isCoach() && clubId in request.auth.token.clubIds);
+      return isAdmin() || (isCoach() && request.auth.token.clubIds != null && clubId in request.auth.token.clubIds);
     }
 
     function isOwner(uid) {

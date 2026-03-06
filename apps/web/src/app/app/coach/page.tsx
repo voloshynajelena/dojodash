@@ -24,8 +24,7 @@ import type { Session, Group as GroupType, GroupMember, MedalTemplate, Medal } f
 
 export default function CoachDashboard() {
   const { user, claims } = useAuth();
-  // Always use demo-club for now until claims are properly set
-  const clubId = 'demo-club';
+  const clubId = claims?.clubIds?.[0] || '';
 
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<Session[]>([]);

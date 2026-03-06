@@ -8,7 +8,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconSearch } from '@tabler/icons-react';
-import { getAllUsers, getChildren, disableUser, updateUser } from '@dojodash/firebase';
+import { getAllUsers, getChildren, disableUser, updateUser, adminDeleteUser } from '@dojodash/firebase';
 import type { User, Child } from '@dojodash/core';
 
 interface UserWithChildren extends User {
@@ -21,9 +21,12 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserWithChildren | null>(null);
+  const [deletingUser, setDeletingUser] = useState<UserWithChildren | null>(null);
   const [detailsOpened, { open: openDetails, close: closeDetails }] = useDisclosure(false);
+  const [deleteOpened, { open: openDelete, close: closeDelete }] = useDisclosure(false);
   const [toggling, setToggling] = useState(false);
   const [updatingRole, setUpdatingRole] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -119,6 +122,38 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleOpenDelete = (user: UserWithChildren) => {
+    setDeletingUser(user);
+    openDelete();
+  };
+
+  const handleDelete = async () => {
+    if (!deletingUser) return;
+    try {
+      setDeleting(true);
+      await adminDeleteUser({ uid: deletingUser.uid });
+      notifications.show({
+        title: 'Success',
+        message: 'User removed successfully',
+        color: 'green',
+      });
+      await loadData();
+      closeDelete();
+      closeDetails();
+      setDeletingUser(null);
+      setSelectedUser(null);
+    } catch (error: unknown) {
+      console.error('Failed to delete user:', error);
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to remove user',
+        color: 'red',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'ADMIN':
@@ -193,13 +228,23 @@ export default function AdminUsersPage() {
                     </Badge>
                   </Table.Td>
                   <Table.Td>
-                    <Button
-                      variant="subtle"
-                      size="xs"
-                      onClick={() => handleViewDetails(user)}
-                    >
-                      View
-                    </Button>
+                    <Group gap="xs">
+                      <Button
+                        variant="subtle"
+                        size="xs"
+                        onClick={() => handleViewDetails(user)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        variant="subtle"
+                        color="red"
+                        size="xs"
+                        onClick={() => handleOpenDelete(user)}
+                      >
+                        Remove
+                      </Button>
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -293,9 +338,49 @@ export default function AdminUsersPage() {
               >
                 {selectedUser.disabled ? 'Enable User' : 'Disable User'}
               </Button>
+              <Button
+                color="red"
+                onClick={() => handleOpenDelete(selectedUser)}
+              >
+                Remove User
+              </Button>
             </Group>
           </Stack>
         )}
+      </Modal>
+
+      <Modal
+        opened={deleteOpened}
+        onClose={() => {
+          closeDelete();
+          setDeletingUser(null);
+        }}
+        title="Remove User"
+        size="sm"
+      >
+        <Stack>
+          <Text>
+            Are you sure you want to remove <strong>{deletingUser?.displayName || deletingUser?.email}</strong>?
+          </Text>
+          <Text size="sm" c="dimmed">
+            This will permanently delete their account and all associated data.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="subtle"
+              onClick={() => {
+                closeDelete();
+                setDeletingUser(null);
+              }}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button color="red" onClick={handleDelete} loading={deleting}>
+              Remove User
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </Container>
   );

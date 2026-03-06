@@ -14,7 +14,7 @@ import type { Club } from '@dojodash/core';
 
 export default function CoachClubPage() {
   const { claims } = useAuth();
-  const clubId = 'demo-club';
+  const clubId = claims?.clubIds?.[0] || '';
 
   const [club, setClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(true);

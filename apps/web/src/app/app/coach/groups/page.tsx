@@ -26,7 +26,7 @@ import type { Group as GroupType, GroupMember } from '@dojodash/core';
 export default function CoachGroupsPage() {
   const { user, claims } = useAuth();
   const router = useRouter();
-  const clubId = 'demo-club';
+  const clubId = claims?.clubIds?.[0] || '';
 
   const [groups, setGroups] = useState<GroupType[]>([]);
   const [loading, setLoading] = useState(true);

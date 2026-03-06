@@ -9,7 +9,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconPlus } from '@tabler/icons-react';
-import { getAllClubs, createClub, updateClub, getClubMembers } from '@dojodash/firebase';
+import { getAllClubs, createClub, updateClub, getClubMembers, deleteClub } from '@dojodash/firebase';
 import type { Club } from '@dojodash/core';
 import { DEFAULT_CLUB_SETTINGS } from '@dojodash/core';
 
@@ -22,8 +22,11 @@ export default function AdminClubsPage() {
   const [clubs, setClubs] = useState<ClubWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [editingClub, setEditingClub] = useState<ClubWithStats | null>(null);
+  const [deletingClub, setDeletingClub] = useState<ClubWithStats | null>(null);
   const [opened, { open, close }] = useDisclosure(false);
+  const [deleteOpened, { open: openDelete, close: closeDelete }] = useDisclosure(false);
 
   const form = useForm({
     initialValues: {
@@ -138,6 +141,36 @@ export default function AdminClubsPage() {
     }
   };
 
+  const handleOpenDelete = (club: ClubWithStats) => {
+    setDeletingClub(club);
+    openDelete();
+  };
+
+  const handleDelete = async () => {
+    if (!deletingClub) return;
+    try {
+      setDeleting(true);
+      await deleteClub(deletingClub.id);
+      notifications.show({
+        title: 'Success',
+        message: 'Club deleted successfully',
+        color: 'green',
+      });
+      await loadData();
+      closeDelete();
+      setDeletingClub(null);
+    } catch (error: unknown) {
+      console.error('Failed to delete club:', error);
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to delete club',
+        color: 'red',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <Container size="lg" py="xl">
@@ -188,13 +221,23 @@ export default function AdminClubsPage() {
                     <Badge color="green">Active</Badge>
                   </Table.Td>
                   <Table.Td>
-                    <Button
-                      variant="subtle"
-                      size="xs"
-                      onClick={() => handleOpenEdit(club)}
-                    >
-                      Edit
-                    </Button>
+                    <Group gap="xs">
+                      <Button
+                        variant="subtle"
+                        size="xs"
+                        onClick={() => handleOpenEdit(club)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="subtle"
+                        color="red"
+                        size="xs"
+                        onClick={() => handleOpenDelete(club)}
+                      >
+                        Remove
+                      </Button>
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -262,6 +305,40 @@ export default function AdminClubsPage() {
             </Group>
           </Stack>
         </form>
+      </Modal>
+
+      <Modal
+        opened={deleteOpened}
+        onClose={() => {
+          closeDelete();
+          setDeletingClub(null);
+        }}
+        title="Delete Club"
+        size="sm"
+      >
+        <Stack>
+          <Text>
+            Are you sure you want to delete <strong>{deletingClub?.name}</strong>?
+          </Text>
+          <Text size="sm" c="dimmed">
+            This will permanently delete the club and all its groups, sessions, and data.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="subtle"
+              onClick={() => {
+                closeDelete();
+                setDeletingClub(null);
+              }}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button color="red" onClick={handleDelete} loading={deleting}>
+              Delete Club
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </Container>
   );

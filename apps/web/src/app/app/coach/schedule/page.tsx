@@ -49,7 +49,7 @@ function ScheduleContent() {
   const { claims } = useAuth();
   const searchParams = useSearchParams();
   const groupFromUrl = searchParams.get('group');
-  const clubId = 'demo-club';
+  const clubId = claims?.clubIds?.[0] || '';
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [groups, setGroups] = useState<GroupType[]>([]);

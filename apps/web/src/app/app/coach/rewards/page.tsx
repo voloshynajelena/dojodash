@@ -42,7 +42,7 @@ const CATEGORY_COLORS: Record<MedalCategory, string> = {
 
 export default function RewardsPage() {
   const { user, claims } = useAuth();
-  const clubId = 'demo-club';
+  const clubId = claims?.clubIds?.[0] || '';
 
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<MedalTemplate[]>([]);
