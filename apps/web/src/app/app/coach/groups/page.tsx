@@ -11,12 +11,12 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import {
   IconPlus, IconUsers, IconCopy, IconCheck, IconTrash,
-  IconUserPlus, IconLink, IconBrandInstagram, IconMail, IconPhone
+  IconUserPlus, IconLink, IconBrandInstagram, IconMail, IconPhone, IconEdit
 } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   getGroups, createGroup, updateGroup, deleteGroup,
-  getGroupMembers, addGroupMember, removeGroupMember, createGroupInvite
+  getGroupMembers, addGroupMember, removeGroupMember, updateGroupMember, createGroupInvite
 } from '@dojodash/firebase';
 import type { Group as GroupType, GroupMember } from '@dojodash/core';
 
@@ -34,7 +34,8 @@ export default function CoachGroupsPage() {
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
   const [manageOpened, { open: openManage, close: closeManage }] = useDisclosure(false);
   const [inviteOpened, { open: openInvite, close: closeInvite }] = useDisclosure(false);
-  const [addMemberOpened, { open: openAddMember, close: closeAddMember }] = useDisclosure(false);
+  const [memberModalOpened, { open: openMemberModal, close: closeMemberModal }] = useDisclosure(false);
+  const [editingMember, setEditingMember] = useState<GroupMember | null>(null);
 
   const createForm = useForm({
     initialValues: {
@@ -219,48 +220,80 @@ export default function CoachGroupsPage() {
   };
 
   const handleOpenAddMember = () => {
+    setEditingMember(null);
     addMemberForm.reset();
-    openAddMember();
+    openMemberModal();
   };
 
-  const handleAddMember = async (values: typeof addMemberForm.values) => {
+  const handleOpenEditMember = (member: GroupMember) => {
+    setEditingMember(member);
+    addMemberForm.setValues({
+      name: member.childName,
+      instagram: member.instagram || '',
+      email: member.email || '',
+      phone: member.phone || '',
+      notes: member.notes || '',
+    });
+    openMemberModal();
+  };
+
+  const handleSaveMember = async (values: typeof addMemberForm.values) => {
     if (!selectedGroup) return;
 
     try {
-      const memberId = `member_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      if (editingMember) {
+        // Update existing member
+        await updateGroupMember(clubId, selectedGroup.id, editingMember.childId, {
+          childName: values.name,
+          instagram: values.instagram || undefined,
+          email: values.email || undefined,
+          phone: values.phone || undefined,
+          notes: values.notes || undefined,
+        });
 
-      const memberData: GroupMember = {
-        childId: memberId,
-        childName: values.name,
-        joinedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
-        status: 'active',
-      };
-      // Only add optional fields if they have values (Firestore doesn't accept undefined)
-      if (values.instagram) memberData.instagram = values.instagram;
-      if (values.email) memberData.email = values.email;
-      if (values.phone) memberData.phone = values.phone;
-      if (values.notes) memberData.notes = values.notes;
+        notifications.show({
+          title: 'Success',
+          message: `${values.name} updated`,
+          color: 'green',
+        });
+      } else {
+        // Add new member
+        const memberId = `member_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      await addGroupMember(clubId, selectedGroup.id, memberData);
+        const memberData: GroupMember = {
+          childId: memberId,
+          childName: values.name,
+          joinedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+          status: 'active',
+        };
+        // Only add optional fields if they have values (Firestore doesn't accept undefined)
+        if (values.instagram) memberData.instagram = values.instagram;
+        if (values.email) memberData.email = values.email;
+        if (values.phone) memberData.phone = values.phone;
+        if (values.notes) memberData.notes = values.notes;
 
-      notifications.show({
-        title: 'Success',
-        message: `${values.name} added to group`,
-        color: 'green',
-      });
+        await addGroupMember(clubId, selectedGroup.id, memberData);
+
+        notifications.show({
+          title: 'Success',
+          message: `${values.name} added to group`,
+          color: 'green',
+        });
+      }
 
       // Refresh members
       const members = await getGroupMembers(clubId, selectedGroup.id);
       setSelectedMembers(members);
 
       addMemberForm.reset();
-      closeAddMember();
+      setEditingMember(null);
+      closeMemberModal();
       loadGroups();
     } catch (error) {
-      console.error('Failed to add member:', error);
+      console.error('Failed to save member:', error);
       notifications.show({
         title: 'Error',
-        message: 'Failed to add member',
+        message: editingMember ? 'Failed to update member' : 'Failed to add member',
         color: 'red',
       });
     }
@@ -471,6 +504,14 @@ export default function CoachGroupsPage() {
                           </Badge>
                           <ActionIcon
                             size="sm"
+                            color="blue"
+                            variant="subtle"
+                            onClick={() => handleOpenEditMember(member)}
+                          >
+                            <IconEdit size={14} />
+                          </ActionIcon>
+                          <ActionIcon
+                            size="sm"
                             color="red"
                             variant="subtle"
                             onClick={() => handleRemoveMember(member)}
@@ -536,9 +577,14 @@ export default function CoachGroupsPage() {
         </Tabs>
       </Modal>
 
-      {/* Add Member Modal */}
-      <Modal opened={addMemberOpened} onClose={closeAddMember} title="Add Member" size="sm">
-        <form onSubmit={addMemberForm.onSubmit(handleAddMember)}>
+      {/* Add/Edit Member Modal */}
+      <Modal
+        opened={memberModalOpened}
+        onClose={() => { closeMemberModal(); setEditingMember(null); }}
+        title={editingMember ? 'Edit Member' : 'Add Member'}
+        size="sm"
+      >
+        <form onSubmit={addMemberForm.onSubmit(handleSaveMember)}>
           <Stack>
             <TextInput
               label="Name"
@@ -570,8 +616,12 @@ export default function CoachGroupsPage() {
               {...addMemberForm.getInputProps('notes')}
             />
             <Group justify="flex-end" mt="md">
-              <Button variant="subtle" onClick={closeAddMember}>Cancel</Button>
-              <Button type="submit">Add Member</Button>
+              <Button variant="subtle" onClick={() => { closeMemberModal(); setEditingMember(null); }}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                {editingMember ? 'Save Changes' : 'Add Member'}
+              </Button>
             </Group>
           </Stack>
         </form>

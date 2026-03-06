@@ -151,6 +151,25 @@ export async function removeGroupMember(
   }
 }
 
+export async function updateGroupMember(
+  clubId: string,
+  groupId: string,
+  childId: string,
+  data: Partial<Omit<GroupMember, 'childId' | 'joinedAt'>>
+): Promise<void> {
+  const db = getFirestoreDb();
+  const docRef = doc(
+    db,
+    CLUBS_COLLECTION,
+    clubId,
+    GROUPS_SUBCOLLECTION,
+    groupId,
+    MEMBERS_SUBCOLLECTION,
+    childId
+  );
+  await updateDoc(docRef, data);
+}
+
 export function subscribeToGroupMembers(
   clubId: string,
   groupId: string,

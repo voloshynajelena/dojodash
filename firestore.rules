@@ -88,9 +88,13 @@ service cloud.firestore {
         // Group members
         match /members/{memberId} {
           allow read: if isAuthenticated();
-          // Users can add themselves (parentUid matches their uid), coaches/admins can manage all
+          // Users can add themselves (parentUid matches their uid OR childId matches their uid)
+          // Coaches/admins can manage all members
           allow create: if isAuthenticated() &&
-            (request.auth.uid == request.resource.data.parentUid || hasClubAccess(clubId));
+            (request.auth.uid == request.resource.data.parentUid ||
+             request.auth.uid == request.resource.data.childId ||
+             isAdmin() ||
+             (isCoach() && request.auth.token.clubIds != null && clubId in request.auth.token.clubIds));
           allow update, delete: if hasClubAccess(clubId);
         }
 
