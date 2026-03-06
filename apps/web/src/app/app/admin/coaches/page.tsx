@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import {
   Container, Title, Text, Card, Button, Group, Table, Badge, Modal,
-  TextInput, Stack, Loader, Center, Select
+  TextInput, PasswordInput, Stack, Loader, Center, Select
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconPlus } from '@tabler/icons-react';
-import { getCoaches, createUser, updateUser, getAllClubs } from '@dojodash/firebase';
+import { getCoaches, updateUser, getAllClubs, adminCreateCoach } from '@dojodash/firebase';
 import type { User, Club } from '@dojodash/core';
 
 export default function AdminCoachesPage() {
@@ -24,11 +24,18 @@ export default function AdminCoachesPage() {
     initialValues: {
       email: '',
       displayName: '',
+      password: '',
       clubIds: [] as string[],
     },
     validate: {
       email: (value) => (!value ? 'Email is required' : null),
       displayName: (value) => (!value ? 'Name is required' : null),
+      password: (value, values) => {
+        // Password only required for new coaches (not editing)
+        if (!editingCoach && !value) return 'Temporary password is required';
+        if (value && value.length < 6) return 'Password must be at least 6 characters';
+        return null;
+      },
     },
   });
 
@@ -63,6 +70,7 @@ export default function AdminCoachesPage() {
     form.setValues({
       email: coach.email,
       displayName: coach.displayName || '',
+      password: '',
       clubIds: coach.clubIds || [],
     });
     open();
@@ -83,20 +91,16 @@ export default function AdminCoachesPage() {
           color: 'green',
         });
       } else {
-        // For new coach, we create a placeholder user record
-        // In production, this would trigger an invite email
-        const uid = `coach-${Date.now()}`;
-        await createUser({
-          uid,
+        // Use Cloud Function to create coach with Firebase Auth
+        await adminCreateCoach({
           email: values.email,
           displayName: values.displayName,
-          role: 'COACH',
+          password: values.password,
           clubIds: values.clubIds,
-          disabled: false,
         });
         notifications.show({
           title: 'Success',
-          message: 'Coach added successfully',
+          message: `Coach created! They can log in with the temporary password.`,
           color: 'green',
         });
       }
@@ -105,11 +109,14 @@ export default function AdminCoachesPage() {
       close();
       form.reset();
       setEditingCoach(null);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to save coach:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save coach';
       notifications.show({
         title: 'Error',
-        message: 'Failed to save coach',
+        message: errorMessage.includes('already-exists')
+          ? 'A user with this email already exists'
+          : errorMessage,
         color: 'red',
       });
     } finally {
@@ -212,6 +219,15 @@ export default function AdminCoachesPage() {
               required
               {...form.getInputProps('displayName')}
             />
+            {!editingCoach && (
+              <PasswordInput
+                label="Temporary Password"
+                placeholder="Min 6 characters"
+                description="Coach can change this in settings after first login"
+                required
+                {...form.getInputProps('password')}
+              />
+            )}
             <Select
               label="Assigned Club"
               placeholder="Select a club"
