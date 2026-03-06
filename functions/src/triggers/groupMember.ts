@@ -11,7 +11,7 @@ interface GroupMemberData {
 }
 
 /**
- * When a member is added to a group, notify coaches
+ * When a member is added to a group, notify coaches and the family
  */
 export const onGroupMemberCreate = onDocumentCreated(
   'clubs/{clubId}/groups/{groupId}/members/{memberId}',
@@ -22,10 +22,15 @@ export const onGroupMemberCreate = onDocumentCreated(
     const memberData = snapshot.data() as GroupMemberData;
     const { clubId, groupId } = event.params;
 
-    // Get group name
     const db = getFirestore();
-    const groupDoc = await db.collection('clubs').doc(clubId).collection('groups').doc(groupId).get();
+
+    // Get group and club names
+    const [groupDoc, clubDoc] = await Promise.all([
+      db.collection('clubs').doc(clubId).collection('groups').doc(groupId).get(),
+      db.collection('clubs').doc(clubId).get(),
+    ]);
     const groupName = groupDoc.data()?.name || 'Unknown Group';
+    const clubName = clubDoc.data()?.name || 'the club';
 
     // Get coaches for this club
     const coachesSnapshot = await db
@@ -35,7 +40,7 @@ export const onGroupMemberCreate = onDocumentCreated(
       .get();
 
     // Notify each coach
-    const notifications = coachesSnapshot.docs.map(async (coachDoc) => {
+    const coachNotifications = coachesSnapshot.docs.map(async (coachDoc) => {
       try {
         await createNotification({
           userId: coachDoc.id,
@@ -54,13 +59,29 @@ export const onGroupMemberCreate = onDocumentCreated(
       }
     });
 
-    await Promise.all(notifications);
-    console.log(`Notified ${coachesSnapshot.size} coaches about new member ${memberData.childName}`);
+    // Notify the family
+    const familyNotification = createNotification({
+      userId: memberData.parentUid,
+      type: 'group_joined',
+      title: 'Joined Group',
+      body: `${memberData.childName} has been added to ${groupName} at ${clubName}.`,
+      data: {
+        clubId,
+        groupId,
+        childId: memberData.childId,
+        childName: memberData.childName,
+      },
+    }).catch((err) => {
+      console.error(`Failed to notify family ${memberData.parentUid}:`, err);
+    });
+
+    await Promise.all([...coachNotifications, familyNotification]);
+    console.log(`Notified ${coachesSnapshot.size} coaches and family about new member ${memberData.childName}`);
   }
 );
 
 /**
- * When a member is removed from a group, notify coaches
+ * When a member is removed from a group, notify coaches and the family
  */
 export const onGroupMemberDelete = onDocumentDeleted(
   'clubs/{clubId}/groups/{groupId}/members/{memberId}',
@@ -71,10 +92,15 @@ export const onGroupMemberDelete = onDocumentDeleted(
     const memberData = snapshot.data() as GroupMemberData;
     const { clubId, groupId } = event.params;
 
-    // Get group name
     const db = getFirestore();
-    const groupDoc = await db.collection('clubs').doc(clubId).collection('groups').doc(groupId).get();
+
+    // Get group and club names
+    const [groupDoc, clubDoc] = await Promise.all([
+      db.collection('clubs').doc(clubId).collection('groups').doc(groupId).get(),
+      db.collection('clubs').doc(clubId).get(),
+    ]);
     const groupName = groupDoc.data()?.name || 'Unknown Group';
+    const clubName = clubDoc.data()?.name || 'the club';
 
     // Get coaches for this club
     const coachesSnapshot = await db
@@ -84,7 +110,7 @@ export const onGroupMemberDelete = onDocumentDeleted(
       .get();
 
     // Notify each coach
-    const notifications = coachesSnapshot.docs.map(async (coachDoc) => {
+    const coachNotifications = coachesSnapshot.docs.map(async (coachDoc) => {
       try {
         await createNotification({
           userId: coachDoc.id,
@@ -103,7 +129,23 @@ export const onGroupMemberDelete = onDocumentDeleted(
       }
     });
 
-    await Promise.all(notifications);
-    console.log(`Notified ${coachesSnapshot.size} coaches about member removal ${memberData.childName}`);
+    // Notify the family
+    const familyNotification = createNotification({
+      userId: memberData.parentUid,
+      type: 'group_left',
+      title: 'Left Group',
+      body: `${memberData.childName} has been removed from ${groupName} at ${clubName}.`,
+      data: {
+        clubId,
+        groupId,
+        childId: memberData.childId,
+        childName: memberData.childName,
+      },
+    }).catch((err) => {
+      console.error(`Failed to notify family ${memberData.parentUid}:`, err);
+    });
+
+    await Promise.all([...coachNotifications, familyNotification]);
+    console.log(`Notified ${coachesSnapshot.size} coaches and family about member removal ${memberData.childName}`);
   }
 );

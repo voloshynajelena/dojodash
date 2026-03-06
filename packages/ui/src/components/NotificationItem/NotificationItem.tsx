@@ -4,6 +4,7 @@ import { Paper, Group, Text, Stack, Badge, ActionIcon, Box } from '@mantine/core
 import {
   IconCalendar,
   IconCalendarX,
+  IconCalendarPlus,
   IconCheck,
   IconMedal,
   IconTarget,
@@ -15,6 +16,7 @@ import {
   IconCircle,
   IconUserPlus,
   IconUserMinus,
+  IconArrowUp,
 } from '@tabler/icons-react';
 import type { Notification, NotificationType } from '@dojodash/core/models';
 import { NOTIFICATION_COLORS } from '@dojodash/core/constants';
@@ -28,12 +30,15 @@ export interface NotificationItemProps {
 const typeIcons: Record<NotificationType, React.ReactNode> = {
   session_reminder: <IconCalendar size={20} />,
   session_cancelled: <IconCalendarX size={20} />,
+  session_scheduled: <IconCalendarPlus size={20} />,
   attendance_marked: <IconCheck size={20} />,
   medal_awarded: <IconMedal size={20} />,
   goal_progress: <IconTarget size={20} />,
   goal_completed: <IconTrophy size={20} />,
   achievement_earned: <IconStar size={20} />,
   group_joined: <IconUsers size={20} />,
+  group_left: <IconUsers size={20} />,
+  level_up: <IconArrowUp size={20} />,
   invite_received: <IconMail size={20} />,
   member_joined: <IconUserPlus size={20} />,
   member_left: <IconUserMinus size={20} />,

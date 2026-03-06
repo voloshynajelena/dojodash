@@ -35,9 +35,12 @@ export const onAttendanceWrite = onDocumentWritten(
     const isPresent = afterData.status === 'present' || afterData.status === 'late';
     const xpAwarded = afterData.xpAwarded ?? 0;
 
+    const oldLevel = currentStats.level;
+    const newLevel = calculateLevel(currentStats.totalXP + xpAwarded);
+
     const newStats = {
       totalXP: currentStats.totalXP + xpAwarded,
-      level: calculateLevel(currentStats.totalXP + xpAwarded),
+      level: newLevel,
       currentStreak: isPresent ? currentStats.currentStreak + 1 : 0,
       longestStreak: isPresent
         ? Math.max(currentStats.longestStreak, currentStats.currentStreak + 1)
@@ -78,6 +81,7 @@ export const onAttendanceWrite = onDocumentWritten(
       }
     }
 
+    // Notify about attendance
     await createNotification({
       userId: parentUid,
       type: 'attendance_marked',
@@ -85,5 +89,16 @@ export const onAttendanceWrite = onDocumentWritten(
       body: `${childData.firstName}'s attendance has been marked as ${afterData.status}${xpAwarded > 0 ? ` (+${xpAwarded} XP)` : ''}`,
       data: { clubId, sessionId, childId },
     });
+
+    // Notify about level up if level increased
+    if (newLevel > oldLevel && isPresent) {
+      await createNotification({
+        userId: parentUid,
+        type: 'level_up',
+        title: 'Level Up!',
+        body: `${childData.firstName} reached Level ${newLevel}! Total XP: ${newStats.totalXP}`,
+        data: { clubId, childId, childName: childData.firstName },
+      });
+    }
   }
 );
