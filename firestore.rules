@@ -129,7 +129,9 @@ service cloud.firestore {
       // Medals subcollection
       match /medals/{medalId} {
         allow read: if isAuthenticated();
-        allow write: if false; // Server only via callable functions
+        allow create: if hasClubAccess(clubId);
+        allow update: if hasClubAccess(clubId);
+        allow delete: if isAdmin();
       }
 
       // Goals subcollection
