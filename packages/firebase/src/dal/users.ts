@@ -179,3 +179,36 @@ export function subscribeToNotifications(
     callback(notifications);
   });
 }
+
+// Admin functions
+export async function getAllUsers(): Promise<User[]> {
+  const db = getFirestoreDb();
+  const colRef = collection(db, USERS_COLLECTION);
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((doc) => ({ uid: doc.id, ...doc.data() }) as User);
+}
+
+export async function getUsersByRole(role: 'ADMIN' | 'COACH' | 'FAMILY'): Promise<User[]> {
+  const db = getFirestoreDb();
+  const colRef = collection(db, USERS_COLLECTION);
+  const q = query(colRef, where('role', '==', role));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({ uid: doc.id, ...doc.data() }) as User);
+}
+
+export async function getCoaches(): Promise<User[]> {
+  return getUsersByRole('COACH');
+}
+
+export async function getFamilies(): Promise<User[]> {
+  return getUsersByRole('FAMILY');
+}
+
+export async function disableUser(uid: string, disabled: boolean): Promise<void> {
+  const db = getFirestoreDb();
+  const docRef = doc(db, USERS_COLLECTION, uid);
+  await updateDoc(docRef, {
+    disabled,
+    updatedAt: serverTimestamp(),
+  });
+}
