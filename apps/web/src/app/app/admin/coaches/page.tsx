@@ -92,6 +92,7 @@ export default function AdminCoachesPage() {
           displayName: values.displayName,
           role: 'COACH',
           clubIds: values.clubIds,
+          disabled: false,
         });
         notifications.show({
           title: 'Success',
