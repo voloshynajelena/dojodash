@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Container, Title, Text, Card, Group, Badge, Select, Button,
-  Stack, Loader, Center, SegmentedControl, ActionIcon, Box, Tooltip, Divider
+  Stack, Loader, Center, SegmentedControl, ActionIcon, Box, Tooltip, Divider, SimpleGrid
 } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight, IconCalendarEvent } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
