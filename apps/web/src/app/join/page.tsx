@@ -10,7 +10,7 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconTicket, IconCheck, IconAlertCircle, IconUsers } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getInviteByCode, getGroup, getClub, addGroupMember, incrementInviteUsedCount, getGroupMembers } from '@dojodash/firebase';
+import { getInviteByCode, getGroup, getClub, addClubMember, incrementInviteUsedCount, getClubMember } from '@dojodash/firebase';
 import type { GroupInvite, Group as GroupType, Club } from '@dojodash/core';
 
 function JoinContent() {
@@ -90,11 +90,11 @@ function JoinContent() {
       setGroup(groupData);
       setClub(clubData);
 
-      // Check if user is already a member (only if logged in - members require auth)
+      // Check if user is already a club member
       if (user) {
         try {
-          const members = await getGroupMembers(foundInvite.clubId, foundInvite.groupId);
-          if (members.some(m => m.childId === user.uid || m.parentUid === user.uid)) {
+          const member = await getClubMember(foundInvite.clubId, user.uid);
+          if (member) {
             setAlreadyMember(true);
           }
         } catch (err) {
@@ -125,17 +125,18 @@ function JoinContent() {
   };
 
   const handleJoin = async () => {
-    if (!invite || !group || !user) return;
+    if (!invite || !club || !user) return;
 
     setLoading(true);
     try {
-      // Add the user as a member
-      await addGroupMember(invite.clubId, invite.groupId, {
-        childId: user.uid,
-        childName: user.displayName || user.email || 'Member',
-        parentUid: user.uid,
+      // Add the user as a club member (not group member)
+      await addClubMember(invite.clubId, {
+        odId: user.uid,
+        displayName: user.displayName || user.email || 'Member',
+        email: user.email || '',
         joinedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
         status: 'active',
+        invitedViaGroupId: invite.groupId, // Track which group they were invited from
       });
 
       // Increment invite used count
@@ -144,7 +145,7 @@ function JoinContent() {
       setJoined(true);
       notifications.show({
         title: 'Welcome!',
-        message: `You've joined ${group.name}`,
+        message: `You've joined ${club.name}`,
         color: 'green',
       });
 
@@ -153,12 +154,12 @@ function JoinContent() {
         router.push('/app/family');
       }, 2000);
     } catch (err: any) {
-      console.error('Error joining group:', err);
+      console.error('Error joining club:', err);
       console.error('Error code:', err?.code);
       console.error('Error message:', err?.message);
       notifications.show({
         title: 'Error',
-        message: `Failed to join group: ${err?.message || 'Please try again.'}`,
+        message: `Failed to join club: ${err?.message || 'Please try again.'}`,
         color: 'red',
       });
     } finally {

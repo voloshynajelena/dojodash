@@ -69,6 +69,15 @@ service cloud.firestore {
       allow update: if hasClubAccess(clubId);
       allow delete: if isAdmin();
 
+      // Club Members subcollection (parents/families)
+      match /members/{memberId} {
+        allow read: if isAuthenticated();
+        // Users can add themselves as club members
+        allow create: if isAuthenticated() && request.auth.uid == memberId;
+        allow update: if isOwner(memberId) || hasClubAccess(clubId);
+        allow delete: if hasClubAccess(clubId);
+      }
+
       // Children Public subcollection (for leaderboard)
       match /childrenPublic/{childId} {
         allow read: if isAuthenticated();

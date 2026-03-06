@@ -19,6 +19,16 @@ import { DEFAULT_CLUB_SETTINGS } from '@dojodash/core';
 
 const CLUBS_COLLECTION = 'clubs';
 const CHILDREN_PUBLIC_SUBCOLLECTION = 'childrenPublic';
+const MEMBERS_SUBCOLLECTION = 'members';
+
+export interface ClubMember {
+  odId: string;
+  displayName: string;
+  email: string;
+  joinedAt: { seconds: number; nanoseconds: number };
+  status: 'active' | 'inactive';
+  invitedViaGroupId?: string;
+}
 
 export async function getClub(clubId: string): Promise<Club | null> {
   const db = getFirestoreDb();
@@ -130,4 +140,42 @@ export function subscribeToChildrenPublic(
     const children = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as ChildPublic);
     callback(children);
   });
+}
+
+// Club Members (parents/families)
+export async function getClubMember(clubId: string, odId: string): Promise<ClubMember | null> {
+  const db = getFirestoreDb();
+  const docRef = doc(db, CLUBS_COLLECTION, clubId, MEMBERS_SUBCOLLECTION, odId);
+  const snapshot = await getDoc(docRef);
+  if (!snapshot.exists()) return null;
+  return snapshot.data() as ClubMember;
+}
+
+export async function getClubMembers(clubId: string): Promise<ClubMember[]> {
+  const db = getFirestoreDb();
+  const colRef = collection(db, CLUBS_COLLECTION, clubId, MEMBERS_SUBCOLLECTION);
+  const snapshot = await getDocs(colRef);
+  return snapshot.docs.map((doc) => doc.data() as ClubMember);
+}
+
+export async function addClubMember(clubId: string, member: ClubMember): Promise<void> {
+  const db = getFirestoreDb();
+  const docRef = doc(db, CLUBS_COLLECTION, clubId, MEMBERS_SUBCOLLECTION, member.odId);
+  await setDoc(docRef, member);
+}
+
+export async function updateClubMember(
+  clubId: string,
+  odId: string,
+  data: Partial<Omit<ClubMember, 'odId' | 'joinedAt'>>
+): Promise<void> {
+  const db = getFirestoreDb();
+  const docRef = doc(db, CLUBS_COLLECTION, clubId, MEMBERS_SUBCOLLECTION, odId);
+  await updateDoc(docRef, data);
+}
+
+export async function removeClubMember(clubId: string, odId: string): Promise<void> {
+  const db = getFirestoreDb();
+  const docRef = doc(db, CLUBS_COLLECTION, clubId, MEMBERS_SUBCOLLECTION, odId);
+  await deleteDoc(docRef);
 }
