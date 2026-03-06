@@ -49,7 +49,7 @@ const coachNavItems: NavItem[] = [
 
 const familyNavItems: NavItem[] = [
   { label: 'Children', icon: <IconUsers size={20} />, href: '/app/family' },
-  { label: 'Calendar', icon: <IconCalendar size={20} />, href: '/app/family/calendar' },
+  { label: 'Schedule', icon: <IconCalendar size={20} />, href: '/app/family/schedule' },
   { label: 'Stats', icon: <IconChartBar size={20} />, href: '/app/family/stats' },
   { label: 'Medals', icon: <IconMedal size={20} />, href: '/app/family/medals' },
   { label: 'Notifications', icon: <IconBell size={20} />, href: '/app/family/notifications' },

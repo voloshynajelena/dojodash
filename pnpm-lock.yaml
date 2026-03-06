@@ -114,9 +114,6 @@ importers:
 
   functions:
     dependencies:
-      '@dojodash/core':
-        specifier: workspace:*
-        version: link:../packages/core
       firebase-admin:
         specifier: ^13.0.2
         version: 13.7.0
@@ -124,9 +121,6 @@ importers:
         specifier: ^6.1.2
         version: 6.6.0(firebase-admin@13.7.0)
     devDependencies:
-      '@dojodash/config':
-        specifier: workspace:*
-        version: link:../packages/config
       esbuild:
         specifier: ^0.27.3
         version: 0.27.3

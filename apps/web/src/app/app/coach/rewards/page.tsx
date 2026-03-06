@@ -791,19 +791,36 @@ export default function RewardsPage() {
           )}
 
           <Select
-            label="Select Group"
+            label="Filter by Group"
+            description="Select a group to see its students"
             placeholder="Choose a group"
             data={groups.map(g => ({ value: g.id, label: g.name }))}
             value={selectedGroupId}
             onChange={handleGroupSelect}
           />
 
+          {!selectedGroupId && (
+            <Paper p="md" bg="gray.0" radius="md" ta="center">
+              <Text size="sm" c="dimmed">
+                Select a group above to see available students
+              </Text>
+            </Paper>
+          )}
+
+          {selectedGroupId && groupMembers.length === 0 && (
+            <Paper p="md" bg="gray.0" radius="md" ta="center">
+              <Text size="sm" c="dimmed">
+                No students in this group yet
+              </Text>
+            </Paper>
+          )}
+
           {groupMembers.length > 0 && (
             <>
               <Text size="sm" fw={500}>
                 {selectedTemplate?.isChampionship
                   ? 'Select New Champion'
-                  : 'Select Members'}
+                  : 'Select Student(s) to Award'}
               </Text>
               {selectedTemplate?.isChampionship && (
                 <Text size="xs" c="dimmed">

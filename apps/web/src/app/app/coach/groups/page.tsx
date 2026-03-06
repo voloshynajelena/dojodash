@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   Container, Title, Text, Card, Button, Group, SimpleGrid, Badge, Stack,
-  Avatar, Modal, TextInput, Textarea, ColorInput, Tabs,
+  Avatar, Modal, TextInput, Textarea, ColorInput, Tabs, Select,
   CopyButton, ActionIcon, Tooltip, Loader, Center, Paper
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -11,17 +11,21 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import {
   IconPlus, IconUsers, IconCopy, IconCheck, IconTrash,
-  IconUserPlus, IconLink, IconBrandInstagram, IconMail, IconPhone, IconEdit
+  IconUserPlus, IconLink, IconBrandInstagram, IconMail, IconPhone, IconEdit,
+  IconArrowsExchange, IconCalendar
 } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import {
   getGroups, createGroup, updateGroup, deleteGroup,
-  getGroupMembers, addGroupMember, removeGroupMember, updateGroupMember, createGroupInvite
+  getGroupMembers, addGroupMember, removeGroupMember, updateGroupMember, createGroupInvite,
+  getSessions, deleteSessionsBatch
 } from '@dojodash/firebase';
 import type { Group as GroupType, GroupMember } from '@dojodash/core';
 
 export default function CoachGroupsPage() {
   const { user, claims } = useAuth();
+  const router = useRouter();
   const clubId = 'demo-club';
 
   const [groups, setGroups] = useState<GroupType[]>([]);
@@ -35,7 +39,10 @@ export default function CoachGroupsPage() {
   const [manageOpened, { open: openManage, close: closeManage }] = useDisclosure(false);
   const [inviteOpened, { open: openInvite, close: closeInvite }] = useDisclosure(false);
   const [memberModalOpened, { open: openMemberModal, close: closeMemberModal }] = useDisclosure(false);
+  const [moveModalOpened, { open: openMoveModal, close: closeMoveModal }] = useDisclosure(false);
   const [editingMember, setEditingMember] = useState<GroupMember | null>(null);
+  const [movingMember, setMovingMember] = useState<GroupMember | null>(null);
+  const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
 
   const createForm = useForm({
     initialValues: {
@@ -161,12 +168,24 @@ export default function CoachGroupsPage() {
   const handleDeleteGroup = async () => {
     if (!selectedGroup) return;
 
+    if (!confirm(`Are you sure you want to delete "${selectedGroup.name}"? This will also delete all scheduled sessions for this group.`)) {
+      return;
+    }
+
     try {
+      // First, delete all sessions associated with this group
+      const groupSessions = await getSessions(clubId, selectedGroup.id);
+      if (groupSessions.length > 0) {
+        const sessionIds = groupSessions.map(s => s.id);
+        await deleteSessionsBatch(clubId, sessionIds);
+      }
+
+      // Then delete the group
       await deleteGroup(clubId, selectedGroup.id);
 
       notifications.show({
         title: 'Success',
-        message: 'Group deleted successfully',
+        message: `Group deleted along with ${groupSessions.length} session(s)`,
         color: 'green',
       });
 
@@ -325,6 +344,49 @@ export default function CoachGroupsPage() {
     }
   };
 
+  const handleOpenMoveMember = (member: GroupMember) => {
+    setMovingMember(member);
+    setTargetGroupId(null);
+    openMoveModal();
+  };
+
+  const handleMoveMember = async () => {
+    if (!selectedGroup || !movingMember || !targetGroupId) return;
+
+    try {
+      // Remove from current group
+      await removeGroupMember(clubId, selectedGroup.id, movingMember.childId);
+
+      // Add to new group
+      await addGroupMember(clubId, targetGroupId, {
+        ...movingMember,
+        joinedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+      });
+
+      const targetGroup = groups.find(g => g.id === targetGroupId);
+      notifications.show({
+        title: 'Success',
+        message: `${movingMember.childName} moved to ${targetGroup?.name}`,
+        color: 'green',
+      });
+
+      // Refresh members
+      const members = await getGroupMembers(clubId, selectedGroup.id);
+      setSelectedMembers(members);
+      loadGroups();
+      closeMoveModal();
+      setMovingMember(null);
+      setTargetGroupId(null);
+    } catch (error) {
+      console.error('Failed to move member:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to move member',
+        color: 'red',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <Container size="lg" py="xl">
@@ -378,6 +440,14 @@ export default function CoachGroupsPage() {
               <Group mt="md">
                 <Button variant="light" size="xs" onClick={() => handleManageGroup(group)}>
                   Manage
+                </Button>
+                <Button
+                  variant="light"
+                  size="xs"
+                  leftSection={<IconCalendar size={14} />}
+                  onClick={() => router.push(`/app/coach/schedule?group=${group.id}`)}
+                >
+                  Schedule
                 </Button>
                 <Button variant="light" size="xs" onClick={() => handleInvite(group)}>
                   Invite
@@ -458,48 +528,37 @@ export default function CoachGroupsPage() {
                 <Stack gap="xs">
                   {selectedMembers.map((member) => (
                     <Paper key={member.childId} p="sm" withBorder>
-                      <Group justify="space-between">
-                        <Group gap="sm">
-                          <Avatar size="sm" radius="xl" color="blue">
+                      <Group justify="space-between" wrap="nowrap" align="flex-start">
+                        <Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                          <Avatar size="sm" radius="xl" color="blue" style={{ flexShrink: 0 }}>
                             {member.childName[0]}
                           </Avatar>
-                          <div>
-                            <Text size="sm" fw={500}>{member.childName}</Text>
-                            <Group gap="xs">
+                          <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
+                            <Text size="sm" fw={500} truncate>{member.childName}</Text>
+                            <Group gap={8} wrap="wrap">
                               {member.instagram && (
-                                <a
-                                  href={`https://instagram.com/${member.instagram.replace('@', '')}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
-                                >
-                                  <IconBrandInstagram size={12} color="gray" />
-                                  <Text size="xs" c="dimmed">@{member.instagram.replace('@', '')}</Text>
-                                </a>
+                                <Group gap={4} wrap="nowrap">
+                                  <IconBrandInstagram size={12} color="gray" style={{ flexShrink: 0 }} />
+                                  <Text size="xs" c="dimmed" truncate>@{member.instagram.replace('@', '')}</Text>
+                                </Group>
                               )}
                               {member.email && (
-                                <a
-                                  href={`mailto:${member.email}`}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
-                                >
-                                  <IconMail size={12} color="gray" />
-                                  <Text size="xs" c="dimmed">{member.email}</Text>
-                                </a>
+                                <Group gap={4} wrap="nowrap">
+                                  <IconMail size={12} color="gray" style={{ flexShrink: 0 }} />
+                                  <Text size="xs" c="dimmed" truncate>{member.email}</Text>
+                                </Group>
                               )}
                               {member.phone && (
-                                <a
-                                  href={`tel:${member.phone}`}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
-                                >
-                                  <IconPhone size={12} color="gray" />
+                                <Group gap={4} wrap="nowrap">
+                                  <IconPhone size={12} color="gray" style={{ flexShrink: 0 }} />
                                   <Text size="xs" c="dimmed">{member.phone}</Text>
-                                </a>
+                                </Group>
                               )}
                             </Group>
-                          </div>
+                          </Stack>
                         </Group>
-                        <Group gap="xs">
-                          <Badge size="sm" variant="light" color={member.status === 'active' ? 'green' : 'gray'}>
+                        <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>
+                          <Badge size="xs" variant="light" color={member.status === 'active' ? 'green' : 'gray'}>
                             {member.status}
                           </Badge>
                           <ActionIcon
@@ -507,14 +566,25 @@ export default function CoachGroupsPage() {
                             color="blue"
                             variant="subtle"
                             onClick={() => handleOpenEditMember(member)}
+                            title="Edit"
                           >
                             <IconEdit size={14} />
+                          </ActionIcon>
+                          <ActionIcon
+                            size="sm"
+                            color="grape"
+                            variant="subtle"
+                            onClick={() => handleOpenMoveMember(member)}
+                            title="Move to another group"
+                          >
+                            <IconArrowsExchange size={14} />
                           </ActionIcon>
                           <ActionIcon
                             size="sm"
                             color="red"
                             variant="subtle"
                             onClick={() => handleRemoveMember(member)}
+                            title="Remove"
                           >
                             <IconTrash size={14} />
                           </ActionIcon>
@@ -631,7 +701,7 @@ export default function CoachGroupsPage() {
       <Modal opened={inviteOpened} onClose={closeInvite} title={`Invite to ${selectedGroup?.name}`} size="sm">
         <Stack>
           <Text size="sm" c="dimmed">
-            Generate an invite code or link that families can use to join this group.
+            Generate an invite code or link that families can use to join the club.
           </Text>
 
           {inviteCode ? (
@@ -683,6 +753,37 @@ export default function CoachGroupsPage() {
             </Button>
           )}
 
+        </Stack>
+      </Modal>
+
+      {/* Move Member Modal */}
+      <Modal
+        opened={moveModalOpened}
+        onClose={() => { closeMoveModal(); setMovingMember(null); setTargetGroupId(null); }}
+        title="Move to Another Group"
+        size="sm"
+      >
+        <Stack>
+          <Text size="sm">
+            Move <strong>{movingMember?.childName}</strong> from <strong>{selectedGroup?.name}</strong> to:
+          </Text>
+          <Select
+            label="Target Group"
+            placeholder="Select a group"
+            data={groups
+              .filter(g => g.id !== selectedGroup?.id)
+              .map(g => ({ value: g.id, label: g.name }))}
+            value={targetGroupId}
+            onChange={setTargetGroupId}
+          />
+          <Group justify="flex-end" mt="md">
+            <Button variant="subtle" onClick={() => { closeMoveModal(); setMovingMember(null); setTargetGroupId(null); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleMoveMember} disabled={!targetGroupId}>
+              Move
+            </Button>
+          </Group>
         </Stack>
       </Modal>
     </Container>

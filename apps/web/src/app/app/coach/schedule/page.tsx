@@ -1,19 +1,20 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import {
   Container, Title, Text, Card, Button, Group, Table, Badge, Select,
   Modal, TextInput, Stack, Loader, Center, Chip, NumberInput, Radio,
-  Divider, Paper, SegmentedControl, ActionIcon, SimpleGrid, Box, Tooltip
+  Divider, Paper, SegmentedControl, ActionIcon, SimpleGrid, Box, Tooltip, Checkbox
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconCalendarRepeat, IconList, IconCalendar, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { IconPlus, IconCalendarRepeat, IconList, IconCalendar, IconChevronLeft, IconChevronRight, IconTrash } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useSearchParams } from 'next/navigation';
 import {
-  getSessions, createSession, createSessionsBatch, updateSession, getGroups
+  getSessions, createSession, createSessionsBatch, updateSession, getGroups, deleteSessionsBatch
 } from '@dojodash/firebase';
 import type { Session, Group as GroupType } from '@dojodash/core';
 
@@ -27,38 +28,46 @@ const DAYS = [
   { value: '0', label: 'S', fullLabel: 'Sunday' },
 ];
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const WEEKDAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAYS_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 type EndType = 'never' | 'on' | 'after';
 type ViewType = 'month' | 'week' | 'list';
 
-// Helper to get start of week (Sunday)
+// Helper to get start of week (Monday)
 const getWeekStart = (date: Date) => {
   const d = new Date(date);
   const day = d.getDay();
-  d.setDate(d.getDate() - day);
+  // Convert Sunday (0) to 7 for easier Monday-based calculation
+  const diff = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - diff);
   d.setHours(0, 0, 0, 0);
   return d;
 };
 
-export default function CoachSchedulePage() {
+function ScheduleContent() {
   const { claims } = useAuth();
+  const searchParams = useSearchParams();
+  const groupFromUrl = searchParams.get('group');
   const clubId = 'demo-club';
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [groups, setGroups] = useState<GroupType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterGroup, setFilterGroup] = useState<string | null>('all');
+  const [filterGroup, setFilterGroup] = useState<string | null>(groupFromUrl || 'all');
   const [filterStatus, setFilterStatus] = useState<string | null>('all');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [creating, setCreating] = useState(false);
-  const [viewType, setViewType] = useState<ViewType>('month');
+  const [viewType, setViewType] = useState<ViewType>('week');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentWeek, setCurrentWeek] = useState(getWeekStart(new Date()));
 
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   // Recurrence state
   const [selectedDays, setSelectedDays] = useState<string[]>(['1']); // Monday default
@@ -70,7 +79,7 @@ export default function CoachSchedulePage() {
   const addForm = useForm({
     initialValues: {
       title: '',
-      groupId: '',
+      groupId: groupFromUrl || '',
       startDate: new Date(),
       startTime: '16:00',
       endTime: '17:00',
@@ -306,6 +315,57 @@ export default function CoachSchedulePage() {
     }
   };
 
+  const toggleSelectSession = (sessionId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(sessionId)) {
+        next.delete(sessionId);
+      } else {
+        next.add(sessionId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredSessions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredSessions.map(s => s.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} session(s)? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      await deleteSessionsBatch(clubId, Array.from(selectedIds));
+
+      notifications.show({
+        title: 'Success',
+        message: `Deleted ${selectedIds.size} session(s)`,
+        color: 'green',
+      });
+
+      setSelectedIds(new Set());
+      loadData();
+    } catch (error) {
+      console.error('Failed to delete sessions:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to delete sessions',
+        color: 'red',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const formatDate = (session: Session) => {
     if (!session.date?.seconds) return 'No date';
     const date = new Date(session.date.seconds * 1000);
@@ -372,7 +432,9 @@ export default function CoachSchedulePage() {
 
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const startOffset = firstDay.getDay();
+    // Convert Sunday (0) to 7 for Monday-based week
+    const dayOfWeek = firstDay.getDay();
+    const startOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     const totalDays = lastDay.getDate();
 
     const days: { date: Date; isCurrentMonth: boolean }[] = [];
@@ -474,12 +536,12 @@ export default function CoachSchedulePage() {
 
   return (
     <Container size="lg" py="xl">
-      <Group justify="space-between" mb="xl">
+      <Group justify="space-between" mb="md">
         <div>
           <Title order={2}>Schedule</Title>
           <Text c="dimmed">Manage training sessions</Text>
         </div>
-        <Group>
+        <Group gap="xs">
           <SegmentedControl
             value={viewType}
             onChange={(val) => setViewType(val as ViewType)}
@@ -489,24 +551,25 @@ export default function CoachSchedulePage() {
               { value: 'list', label: 'List' },
             ]}
           />
-          <Button leftSection={<IconPlus size={16} />} onClick={openAdd}>
-            Add Session
-          </Button>
+          <Select
+            placeholder="Filter by group"
+            data={[
+              { value: 'all', label: 'All Groups' },
+              ...groups.map(g => ({ value: g.id, label: g.name })),
+            ]}
+            value={filterGroup}
+            onChange={setFilterGroup}
+            clearable={false}
+            w={140}
+            size="sm"
+          />
+          <ActionIcon variant="filled" onClick={openAdd} size="lg">
+            <IconPlus size={18} />
+          </ActionIcon>
         </Group>
       </Group>
 
-      <Group mb="lg">
-        <Select
-          placeholder="Filter by group"
-          data={[
-            { value: 'all', label: 'All Groups' },
-            ...groups.map(g => ({ value: g.id, label: g.name })),
-          ]}
-          value={filterGroup}
-          onChange={setFilterGroup}
-          clearable={false}
-          w={160}
-        />
+      <Group mb="lg" gap="xs">
         {viewType === 'list' && (
           <Select
             placeholder="Status"
@@ -519,6 +582,7 @@ export default function CoachSchedulePage() {
             value={filterStatus}
             onChange={setFilterStatus}
             clearable={false}
+            size="sm"
           />
         )}
         {viewType === 'month' && (
@@ -526,15 +590,15 @@ export default function CoachSchedulePage() {
             <ActionIcon variant="subtle" onClick={goToPrevMonth}>
               <IconChevronLeft size={20} />
             </ActionIcon>
-            <Button variant="subtle" onClick={goToToday} size="compact-sm">
-              Today
-            </Button>
             <Text fw={500} w={150} ta="center">
               {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </Text>
             <ActionIcon variant="subtle" onClick={goToNextMonth}>
               <IconChevronRight size={20} />
             </ActionIcon>
+            <Button variant="light" onClick={goToToday} size="compact-sm">
+              Today
+            </Button>
           </>
         )}
         {viewType === 'week' && (
@@ -542,15 +606,15 @@ export default function CoachSchedulePage() {
             <ActionIcon variant="subtle" onClick={goToPrevWeek}>
               <IconChevronLeft size={20} />
             </ActionIcon>
-            <Button variant="subtle" onClick={goToToday} size="compact-sm">
-              Today
-            </Button>
-            <Text fw={500} w={200} ta="center">
+            <Text fw={500} ta="center" style={{ minWidth: 140 }}>
               {formatWeekRange()}
             </Text>
             <ActionIcon variant="subtle" onClick={goToNextWeek}>
               <IconChevronRight size={20} />
             </ActionIcon>
+            <Button variant="light" onClick={goToToday} size="compact-sm">
+              Today
+            </Button>
           </>
         )}
       </Group>
@@ -560,7 +624,7 @@ export default function CoachSchedulePage() {
           {/* Calendar Header */}
           <SimpleGrid cols={7} spacing={0}>
             {WEEKDAYS.map(day => (
-              <Box key={day} p="xs" ta="center" style={{ borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
+              <Box key={day} p="xs" ta="center" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
                 <Text size="sm" fw={500} c="dimmed">{day}</Text>
               </Box>
             ))}
@@ -579,9 +643,9 @@ export default function CoachSchedulePage() {
                   p="xs"
                   mih={100}
                   style={{
-                    borderBottom: '1px solid var(--mantine-color-gray-2)',
-                    borderRight: idx % 7 !== 6 ? '1px solid var(--mantine-color-gray-2)' : undefined,
-                    backgroundColor: isToday(date) ? 'var(--mantine-color-blue-0)' : isCurrentMonth ? undefined : 'var(--mantine-color-gray-0)',
+                    borderBottom: '1px solid var(--mantine-color-default-border)',
+                    borderRight: idx % 7 !== 6 ? '1px solid var(--mantine-color-default-border)' : undefined,
+                    backgroundColor: isToday(date) ? 'var(--mantine-color-blue-light)' : isCurrentMonth ? undefined : 'var(--mantine-color-default-hover)',
                   }}
                 >
                   <Text
@@ -602,15 +666,15 @@ export default function CoachSchedulePage() {
                         <Box
                           onClick={() => handleEditSession(session)}
                           style={{
-                            backgroundColor: `var(--mantine-color-${getGroupColor(session.groupId)}-1)`,
-                            borderLeft: `3px solid var(--mantine-color-${getGroupColor(session.groupId)}-5)`,
+                            backgroundColor: `var(--mantine-color-${getGroupColor(session.groupId)}-light)`,
+                            borderLeft: `3px solid var(--mantine-color-${getGroupColor(session.groupId)}-6)`,
                             padding: '2px 4px',
                             borderRadius: 4,
                             cursor: 'pointer',
                             overflow: 'hidden',
                           }}
                         >
-                          <Text size="xs" lineClamp={1}>
+                          <Text size="xs" lineClamp={1} c={`${getGroupColor(session.groupId)}.9`}>
                             {formatTimeShort(session)} {session.title}
                           </Text>
                         </Box>
@@ -628,66 +692,65 @@ export default function CoachSchedulePage() {
           </SimpleGrid>
         </Card>
       ) : viewType === 'week' ? (
-        <Card withBorder p={0}>
-          {/* Week View Header */}
-          <SimpleGrid cols={7} spacing={0}>
-            {getWeekDays().map((date, idx) => (
-              <Box
+        <Stack gap="xs">
+          {getWeekDays().map((date, idx) => {
+            const dayKey = date.toDateString();
+            const daySessions = sessionsByDate.get(dayKey) || [];
+            const scheduledSessions = daySessions.filter(s => s.status === 'scheduled');
+
+            return (
+              <Card
                 key={idx}
-                p="xs"
-                ta="center"
+                withBorder
+                p="sm"
                 style={{
-                  borderBottom: '1px solid var(--mantine-color-gray-3)',
-                  backgroundColor: isToday(date) ? 'var(--mantine-color-blue-0)' : undefined,
+                  backgroundColor: isToday(date) ? 'var(--mantine-color-blue-light)' : undefined,
                 }}
               >
-                <Text size="xs" c="dimmed">{WEEKDAYS[date.getDay()]}</Text>
-                <Text size="lg" fw={isToday(date) ? 700 : 500}>{date.getDate()}</Text>
-              </Box>
-            ))}
-          </SimpleGrid>
-
-          {/* Week View Grid */}
-          <SimpleGrid cols={7} spacing={0}>
-            {getWeekDays().map((date, idx) => {
-              const dayKey = date.toDateString();
-              const daySessions = sessionsByDate.get(dayKey) || [];
-              const scheduledSessions = daySessions.filter(s => s.status === 'scheduled');
-
-              return (
-                <Box
-                  key={idx}
-                  p="xs"
-                  mih={300}
-                  style={{
-                    borderRight: idx !== 6 ? '1px solid var(--mantine-color-gray-2)' : undefined,
-                    backgroundColor: isToday(date) ? 'var(--mantine-color-blue-0)' : undefined,
-                  }}
-                >
-                  <Stack gap={4}>
-                    {scheduledSessions.map(session => (
-                      <Box
-                        key={session.id}
-                        onClick={() => handleEditSession(session)}
-                        style={{
-                          backgroundColor: `var(--mantine-color-${getGroupColor(session.groupId)}-1)`,
-                          borderLeft: `3px solid var(--mantine-color-${getGroupColor(session.groupId)}-5)`,
-                          padding: '6px 8px',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <Text size="xs" fw={500}>{formatTimeShort(session)}</Text>
-                        <Text size="sm" lineClamp={1}>{session.title}</Text>
-                        <Text size="xs" c="dimmed">{getGroupName(session.groupId)}</Text>
-                      </Box>
-                    ))}
-                  </Stack>
-                </Box>
-              );
-            })}
-          </SimpleGrid>
-        </Card>
+                <Group wrap="nowrap" align="flex-start">
+                  <Box style={{ flex: 1 }}>
+                    <Group gap="xs">
+                      <Text size="sm" fw={600} c={isToday(date) ? 'blue' : undefined}>
+                        {WEEKDAYS_FULL[idx]}
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </Text>
+                    </Group>
+                    {isToday(date) && (
+                      <Badge size="xs" color="blue" mt={4}>Today</Badge>
+                    )}
+                    {scheduledSessions.length > 0 && (
+                      <Badge size="xs" variant="light" mt={4}>{scheduledSessions.length} session{scheduledSessions.length !== 1 ? 's' : ''}</Badge>
+                    )}
+                  </Box>
+                  <Divider orientation="vertical" />
+                  <Box style={{ flex: 1 }}>
+                    {scheduledSessions.length > 0 ? (
+                      <Stack gap={4}>
+                        {scheduledSessions.map(session => (
+                          <Group
+                            key={session.id}
+                            onClick={() => handleEditSession(session)}
+                            justify="space-between"
+                            wrap="nowrap"
+                            py={4}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <Text size="sm">{session.title}</Text>
+                            <Text size="sm" c="dimmed">{formatTimeShort(session)}</Text>
+                          </Group>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Text size="sm" c="dimmed">No sessions</Text>
+                    )}
+                  </Box>
+                </Group>
+              </Card>
+            );
+          })}
+        </Stack>
       ) : (
         <Card withBorder>
           {filteredSessions.length === 0 ? (
@@ -695,54 +758,96 @@ export default function CoachSchedulePage() {
               No sessions found. Create your first session to get started.
             </Text>
           ) : (
-            <Table>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Date</Table.Th>
-                  <Table.Th>Time</Table.Th>
-                  <Table.Th>Group</Table.Th>
-                  <Table.Th>Title</Table.Th>
-                  <Table.Th>Status</Table.Th>
-                  <Table.Th>Actions</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {filteredSessions.map((session) => (
-                  <Table.Tr key={session.id}>
-                    <Table.Td>{formatDate(session)}</Table.Td>
-                    <Table.Td>{formatTime(session)}</Table.Td>
-                    <Table.Td>{getGroupName(session.groupId)}</Table.Td>
-                    <Table.Td>{session.title}</Table.Td>
-                    <Table.Td>
-                      <Badge color={getStatusColor(session.status)}>
-                        {session.status}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Group gap="xs">
-                        <Button
-                          variant="subtle"
-                          size="xs"
-                          onClick={() => handleEditSession(session)}
-                        >
-                          Edit
-                        </Button>
-                        {session.status === 'scheduled' && (
+            <>
+              {selectedIds.size > 0 && (
+                <Group p="sm" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                  <Text size="sm" c="dimmed">
+                    {selectedIds.size} selected
+                  </Text>
+                  <Button
+                    size="xs"
+                    color="red"
+                    variant="light"
+                    leftSection={<IconTrash size={14} />}
+                    onClick={handleDeleteSelected}
+                    loading={deleting}
+                  >
+                    Delete Selected
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="subtle"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    Clear Selection
+                  </Button>
+                </Group>
+              )}
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th style={{ width: 40 }}>
+                      <Checkbox
+                        checked={selectedIds.size === filteredSessions.length && filteredSessions.length > 0}
+                        indeterminate={selectedIds.size > 0 && selectedIds.size < filteredSessions.length}
+                        onChange={toggleSelectAll}
+                      />
+                    </Table.Th>
+                    <Table.Th>Date</Table.Th>
+                    <Table.Th>Time</Table.Th>
+                    <Table.Th>Group</Table.Th>
+                    <Table.Th>Title</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Actions</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {filteredSessions.map((session) => (
+                    <Table.Tr
+                      key={session.id}
+                      bg={selectedIds.has(session.id) ? 'var(--mantine-color-blue-light)' : undefined}
+                    >
+                      <Table.Td>
+                        <Checkbox
+                          checked={selectedIds.has(session.id)}
+                          onChange={() => toggleSelectSession(session.id)}
+                        />
+                      </Table.Td>
+                      <Table.Td>{formatDate(session)}</Table.Td>
+                      <Table.Td>{formatTime(session)}</Table.Td>
+                      <Table.Td>{getGroupName(session.groupId)}</Table.Td>
+                      <Table.Td>{session.title}</Table.Td>
+                      <Table.Td>
+                        <Badge color={getStatusColor(session.status)}>
+                          {session.status}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
                           <Button
                             variant="subtle"
                             size="xs"
-                            color="red"
-                            onClick={() => handleCancelSession(session)}
+                            onClick={() => handleEditSession(session)}
                           >
-                            Cancel
+                            Edit
                           </Button>
-                        )}
-                      </Group>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+                          {session.status === 'scheduled' && (
+                            <Button
+                              variant="subtle"
+                              size="xs"
+                              color="red"
+                              onClick={() => handleCancelSession(session)}
+                            >
+                              Cancel
+                            </Button>
+                          )}
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </>
           )}
         </Card>
       )}
@@ -807,28 +912,26 @@ export default function CoachSchedulePage() {
                   <Text size="sm">week(s)</Text>
                 </Group>
 
-                <div>
-                  <Text size="sm" mb="xs">Repeat on</Text>
-                  <Group gap="xs">
-                    {DAYS.map((day) => (
-                      <Chip
-                        key={day.value}
-                        checked={selectedDays.includes(day.value)}
-                        onChange={() => {
-                          if (selectedDays.includes(day.value)) {
-                            setSelectedDays(selectedDays.filter(d => d !== day.value));
-                          } else {
-                            setSelectedDays([...selectedDays, day.value]);
-                          }
-                        }}
-                        size="md"
-                        radius="xl"
-                      >
-                        {day.label}
-                      </Chip>
-                    ))}
-                  </Group>
-                </div>
+                <Group gap="xs" align="center">
+                  <Text size="sm">Repeat on</Text>
+                  {DAYS.map((day) => (
+                    <Chip
+                      key={day.value}
+                      checked={selectedDays.includes(day.value)}
+                      onChange={() => {
+                        if (selectedDays.includes(day.value)) {
+                          setSelectedDays(selectedDays.filter(d => d !== day.value));
+                        } else {
+                          setSelectedDays([...selectedDays, day.value]);
+                        }
+                      }}
+                      size="xs"
+                      radius="xl"
+                    >
+                      {day.label}
+                    </Chip>
+                  ))}
+                </Group>
 
                 <div>
                   <Text size="sm" mb="xs">Ends</Text>
@@ -930,5 +1033,19 @@ export default function CoachSchedulePage() {
         </form>
       </Modal>
     </Container>
+  );
+}
+
+export default function CoachSchedulePage() {
+  return (
+    <Suspense fallback={
+      <Container size="lg" py="xl">
+        <Center h={300}>
+          <Loader size="lg" />
+        </Center>
+      </Container>
+    }>
+      <ScheduleContent />
+    </Suspense>
   );
 }

@@ -144,6 +144,23 @@ export async function deleteSession(clubId: string, sessionId: string): Promise<
   await deleteDoc(docRef);
 }
 
+export async function deleteSessionsBatch(clubId: string, sessionIds: string[]): Promise<void> {
+  const db = getFirestoreDb();
+  const BATCH_SIZE = 500;
+
+  for (let i = 0; i < sessionIds.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    const chunk = sessionIds.slice(i, i + BATCH_SIZE);
+
+    for (const sessionId of chunk) {
+      const docRef = doc(db, CLUBS_COLLECTION, clubId, SESSIONS_SUBCOLLECTION, sessionId);
+      batch.delete(docRef);
+    }
+
+    await batch.commit();
+  }
+}
+
 export function subscribeToSessions(
   clubId: string,
   groupId: string | undefined,

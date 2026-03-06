@@ -196,6 +196,8 @@ export default function CoachDashboard() {
         awardedBy: user?.uid ?? '',
         awardedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
         reason: rewardNote,
+        recipientName: rewardMember.childName,
+        groupName: getGroupName(selectedSession.groupId),
       });
 
       notifications.show({
