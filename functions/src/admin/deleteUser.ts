@@ -26,8 +26,13 @@ export const adminDeleteUser = onCall<AdminDeleteUserRequest, Promise<AdminDelet
       const userDoc = await db.collection('users').doc(uid).get();
       const userData = userDoc.data();
 
-      // Delete from Firebase Auth
-      await auth.deleteUser(uid);
+      // Try to delete from Firebase Auth (may not exist for legacy placeholder users)
+      try {
+        await auth.deleteUser(uid);
+      } catch (authError) {
+        // If user doesn't exist in Auth, that's okay - continue to delete from Firestore
+        console.log(`User ${uid} not found in Auth, continuing with Firestore deletion`);
+      }
 
       // Delete from Firestore
       await db.collection('users').doc(uid).delete();
