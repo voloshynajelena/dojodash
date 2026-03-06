@@ -8,22 +8,53 @@ import {
 import { IconMedal, IconTrophy } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthGuard } from '@/components/auth/AuthGuard';
-import { getChildren, getMemberGroups } from '@dojodash/firebase';
-import type { Child } from '@dojodash/core';
-import { EmptyState } from '@dojodash/ui';
+import { getChildren, getMemberGroups, getChildMedals } from '@dojodash/firebase';
+import { MedalGraphic } from '@dojodash/ui/components';
+import type { Child, Medal } from '@dojodash/core';
 
-interface Medal {
-  id: string;
-  name: string;
-  description: string;
-  xpValue: number;
-  color: string;
-  awardedAt: Date;
-}
+function ChildMedals({ child, clubIds, hasGroups }: { child: Child; clubIds: string[]; hasGroups: boolean }) {
+  const [medals, setMedals] = useState<Medal[]>([]);
+  const [loading, setLoading] = useState(true);
 
-function ChildMedals({ child, hasGroups }: { child: Child; hasGroups: boolean }) {
-  // TODO: Fetch real medals for this child
-  const medals: Medal[] = [];
+  useEffect(() => {
+    loadMedals();
+  }, [child.id, clubIds]);
+
+  const loadMedals = async () => {
+    try {
+      setLoading(true);
+      // Fetch medals from all clubs the child might be in
+      const allMedals: Medal[] = [];
+      for (const clubId of clubIds) {
+        const clubMedals = await getChildMedals(clubId, child.id);
+        allMedals.push(...clubMedals);
+      }
+      // Sort by awarded date descending
+      allMedals.sort((a, b) => {
+        const aTime = a.awardedAt?.seconds || 0;
+        const bTime = b.awardedAt?.seconds || 0;
+        return bTime - aTime;
+      });
+      setMedals(allMedals);
+    } catch (error) {
+      console.error('Failed to load medals:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (timestamp: { seconds: number; nanoseconds: number } | undefined) => {
+    if (!timestamp) return 'Recently';
+    return new Date(timestamp.seconds * 1000).toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <Center h={200}>
+        <Loader size="md" />
+      </Center>
+    );
+  }
 
   return (
     <>
@@ -46,35 +77,38 @@ function ChildMedals({ child, hasGroups }: { child: Child; hasGroups: boolean })
       </Group>
 
       {medals.length === 0 ? (
-        <EmptyState
-          icon={<IconMedal size={32} />}
-          title="No medals yet"
-          description={
-            hasGroups
+        <Card withBorder p="xl" ta="center">
+          <IconMedal size={48} color="gray" style={{ opacity: 0.5 }} />
+          <Text size="lg" fw={500} mt="md">No medals yet</Text>
+          <Text size="sm" c="dimmed">
+            {hasGroups
               ? "Keep training! Medals are awarded for achievements and outstanding performance."
-              : "Join a training group to start earning medals for your achievements."
-          }
-          color="yellow"
-        />
+              : "Join a training group to start earning medals for your achievements."}
+          </Text>
+        </Card>
       ) : (
         <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>
           {medals.map((medal) => (
-            <Card
-              key={medal.id}
-              withBorder
-              p="lg"
-              style={{ borderLeft: `4px solid var(--mantine-color-${medal.color}-5)` }}
-            >
-              <Group justify="space-between" mb="sm">
-                <Text fw={500}>{medal.name}</Text>
-                <Badge color={medal.color}>{medal.xpValue} XP</Badge>
-              </Group>
-              <Text size="sm" c="dimmed">
-                {medal.description}
-              </Text>
-              <Text size="xs" c="dimmed" mt="sm">
-                Earned {medal.awardedAt.toLocaleDateString()}
-              </Text>
+            <Card key={medal.id} withBorder p="lg">
+              <Stack align="center" gap="sm">
+                <MedalGraphic
+                  name={medal.name}
+                  customText={medal.customText}
+                  color={medal.color}
+                  shape={medal.shape}
+                  borderStyle={medal.borderStyle}
+                  size="md"
+                  isChampionship={medal.isChampionship}
+                />
+                <Badge color="green" variant="light">+{medal.xpValue} XP</Badge>
+                {medal.description && (
+                  <Text size="sm" c="dimmed" ta="center">{medal.description}</Text>
+                )}
+                <Text size="xs" c="dimmed">
+                  {medal.groupName && `${medal.groupName} • `}
+                  {formatDate(medal.awardedAt as any)}
+                </Text>
+              </Stack>
             </Card>
           ))}
         </SimpleGrid>
@@ -89,6 +123,7 @@ export default function FamilyMedalsPage() {
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasGroups, setHasGroups] = useState(false);
+  const [clubIds, setClubIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -105,6 +140,9 @@ export default function FamilyMedalsPage() {
       ]);
       setChildren(childrenData);
       setHasGroups(memberGroups.length > 0);
+      // Extract unique clubIds from memberGroups
+      const uniqueClubIds = [...new Set(memberGroups.map(mg => mg.clubId))];
+      setClubIds(uniqueClubIds);
       if (childrenData.length > 0 && childrenData[0]) {
         setActiveTab(childrenData[0].id);
       }
@@ -134,16 +172,14 @@ export default function FamilyMedalsPage() {
         <Text c="dimmed" mb="xl">Earned medals and awards</Text>
 
         {children.length === 0 ? (
-          <EmptyState
-            icon={<IconMedal size={32} />}
-            title="No children yet"
-            description="Add a child to start tracking their medals."
-            action={{ label: 'Add Child', onClick: () => window.location.href = '/app/family' }}
-            color="yellow"
-          />
+          <Card withBorder p="xl" ta="center">
+            <IconMedal size={48} color="gray" style={{ opacity: 0.5 }} />
+            <Text size="lg" fw={500} mt="md">No children yet</Text>
+            <Text size="sm" c="dimmed">Add a child to start tracking their medals.</Text>
+          </Card>
         ) : children.length === 1 ? (
           // Single child - no tabs needed
-          <ChildMedals child={children[0]!} hasGroups={hasGroups} />
+          <ChildMedals child={children[0]!} clubIds={clubIds} hasGroups={hasGroups} />
         ) : (
           // Multiple children - use tabs
           <Tabs value={activeTab} onChange={setActiveTab}>
@@ -165,7 +201,7 @@ export default function FamilyMedalsPage() {
 
             {children.map((child) => (
               <Tabs.Panel key={child.id} value={child.id}>
-                <ChildMedals child={child} hasGroups={hasGroups} />
+                <ChildMedals child={child} clubIds={clubIds} hasGroups={hasGroups} />
               </Tabs.Panel>
             ))}
           </Tabs>

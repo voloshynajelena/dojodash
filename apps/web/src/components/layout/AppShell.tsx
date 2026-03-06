@@ -1,6 +1,7 @@
 'use client';
 
-import { AppShell as MantineAppShell, Burger, Group, NavLink, Text, Avatar, Menu, Box, UnstyledButton, ActionIcon, useMantineColorScheme } from '@mantine/core';
+import { useState, useEffect } from 'react';
+import { AppShell as MantineAppShell, Burger, Group, NavLink, Text, Avatar, Menu, Box, UnstyledButton, ActionIcon, useMantineColorScheme, Badge, Indicator } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useRouter, usePathname } from 'next/navigation';
 import {
@@ -22,7 +23,8 @@ import {
   IconTrophy,
 } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
-import type { UserRole } from '@dojodash/core';
+import { subscribeToNotifications } from '@dojodash/firebase';
+import type { UserRole, Notification } from '@dojodash/core';
 import type { ReactNode } from 'react';
 
 interface NavItem {
@@ -75,6 +77,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = subscribeToNotifications(user.uid, (notifications) => {
+      const unread = notifications.filter(n => !n.read).length;
+      setUnreadCount(unread);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const navItems = claims ? getNavItems(claims.role) : [];
 
@@ -152,7 +166,18 @@ export function AppShell({ children }: { children: ReactNode }) {
         {navItems.map((item) => (
           <NavLink
             key={item.href}
-            label={item.label}
+            label={
+              item.label === 'Notifications' && unreadCount > 0 ? (
+                <Group gap="xs">
+                  <span>{item.label}</span>
+                  <Badge size="xs" color="red" variant="filled" circle>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Badge>
+                </Group>
+              ) : (
+                item.label
+              )
+            }
             leftSection={item.icon}
             active={pathname === item.href}
             onClick={() => {
