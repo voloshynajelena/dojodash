@@ -6,7 +6,7 @@ import { requireClubAccess, createAuditLog } from '../utils';
 export const applyAttendanceBatch = onCall<
   ApplyAttendanceBatchRequest,
   Promise<ApplyAttendanceBatchResponse>
->(async (request) => {
+>({ invoker: 'public' }, async (request) => {
   const { sessionId, clubId, groupId, records, deviceId } = request.data;
 
   if (!sessionId || !clubId || !groupId || !records || records.length === 0) {

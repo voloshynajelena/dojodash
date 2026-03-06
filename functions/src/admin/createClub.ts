@@ -5,6 +5,7 @@ import { DEFAULT_CLUB_SETTINGS } from '@dojodash/core';
 import { requireAdmin, createAuditLog } from '../utils';
 
 export const adminCreateClub = onCall<AdminCreateClubRequest, Promise<AdminCreateClubResponse>>(
+  { invoker: 'public' },
   async (request) => {
     const claims = requireAdmin(request);
     const { name, slug, timezone, settings } = request.data;

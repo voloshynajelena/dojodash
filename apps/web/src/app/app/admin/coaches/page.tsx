@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import {
   Container, Title, Text, Card, Button, Group, Table, Badge, Modal,
-  TextInput, PasswordInput, Stack, Loader, Center, Select
+  TextInput, PasswordInput, Stack, Loader, Center, MultiSelect
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconPlus } from '@tabler/icons-react';
-import { getCoaches, updateUser, getAllClubs, adminCreateCoach } from '@dojodash/firebase';
+import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { getCoaches, updateUser, getAllClubs, adminCreateCoach, adminDeleteUser } from '@dojodash/firebase';
 import type { User, Club } from '@dojodash/core';
 
 export default function AdminCoachesPage() {
@@ -17,8 +17,11 @@ export default function AdminCoachesPage() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [editingCoach, setEditingCoach] = useState<User | null>(null);
+  const [deletingCoach, setDeletingCoach] = useState<User | null>(null);
   const [opened, { open, close }] = useDisclosure(false);
+  const [deleteOpened, { open: openDelete, close: closeDelete }] = useDisclosure(false);
 
   const form = useForm({
     initialValues: {
@@ -124,6 +127,36 @@ export default function AdminCoachesPage() {
     }
   };
 
+  const handleOpenDelete = (coach: User) => {
+    setDeletingCoach(coach);
+    openDelete();
+  };
+
+  const handleDelete = async () => {
+    if (!deletingCoach) return;
+    try {
+      setDeleting(true);
+      await adminDeleteUser({ uid: deletingCoach.uid });
+      notifications.show({
+        title: 'Success',
+        message: 'Coach removed successfully',
+        color: 'green',
+      });
+      await loadData();
+      closeDelete();
+      setDeletingCoach(null);
+    } catch (error: unknown) {
+      console.error('Failed to delete coach:', error);
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to remove coach',
+        color: 'red',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const getClubNames = (clubIds?: string[]) => {
     if (!clubIds || clubIds.length === 0) return '-';
     return clubIds
@@ -181,13 +214,23 @@ export default function AdminCoachesPage() {
                     </Badge>
                   </Table.Td>
                   <Table.Td>
-                    <Button
-                      variant="subtle"
-                      size="xs"
-                      onClick={() => handleOpenEdit(coach)}
-                    >
-                      Edit
-                    </Button>
+                    <Group gap="xs">
+                      <Button
+                        variant="subtle"
+                        size="xs"
+                        onClick={() => handleOpenEdit(coach)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="subtle"
+                        color="red"
+                        size="xs"
+                        onClick={() => handleOpenDelete(coach)}
+                      >
+                        Remove
+                      </Button>
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -228,14 +271,12 @@ export default function AdminCoachesPage() {
                 {...form.getInputProps('password')}
               />
             )}
-            <Select
-              label="Assigned Club"
-              placeholder="Select a club"
+            <MultiSelect
+              label="Assigned Clubs"
+              placeholder="Select clubs"
               data={clubs.map((c) => ({ value: c.id, label: c.name }))}
-              value={form.values.clubIds[0] || null}
-              onChange={(value) =>
-                form.setFieldValue('clubIds', value ? [value] : [])
-              }
+              value={form.values.clubIds}
+              onChange={(value) => form.setFieldValue('clubIds', value)}
             />
             <Group justify="flex-end" mt="md">
               <Button
@@ -254,6 +295,40 @@ export default function AdminCoachesPage() {
             </Group>
           </Stack>
         </form>
+      </Modal>
+
+      <Modal
+        opened={deleteOpened}
+        onClose={() => {
+          closeDelete();
+          setDeletingCoach(null);
+        }}
+        title="Remove Coach"
+        size="sm"
+      >
+        <Stack>
+          <Text>
+            Are you sure you want to remove <strong>{deletingCoach?.displayName || deletingCoach?.email}</strong>?
+          </Text>
+          <Text size="sm" c="dimmed">
+            This will permanently delete their account and they will no longer be able to access the system.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="subtle"
+              onClick={() => {
+                closeDelete();
+                setDeletingCoach(null);
+              }}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button color="red" onClick={handleDelete} loading={deleting}>
+              Remove Coach
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </Container>
   );

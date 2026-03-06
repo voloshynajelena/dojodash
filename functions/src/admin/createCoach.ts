@@ -5,6 +5,7 @@ import type { AdminCreateCoachRequest, AdminCreateCoachResponse, AuthClaims } fr
 import { requireAdmin, createAuditLog } from '../utils';
 
 export const adminCreateCoach = onCall<AdminCreateCoachRequest, Promise<AdminCreateCoachResponse>>(
+  { invoker: 'public' },
   async (request) => {
     requireAdmin(request);
     const { email, displayName, password, clubIds } = request.data;
@@ -55,10 +56,15 @@ export const adminCreateCoach = onCall<AdminCreateCoachRequest, Promise<AdminCre
 
       return { uid: userRecord.uid };
     } catch (error) {
-      if (error instanceof Error && error.message.includes('email-already-exists')) {
-        throw new HttpsError('already-exists', 'A user with this email already exists');
+      console.error('adminCreateCoach error:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('email-already-exists')) {
+          throw new HttpsError('already-exists', 'A user with this email already exists');
+        }
+        // Pass through the actual error message for debugging
+        throw new HttpsError('internal', `Failed to create coach: ${error.message}`);
       }
-      throw new HttpsError('internal', 'Failed to create coach');
+      throw new HttpsError('internal', 'Failed to create coach: Unknown error');
     }
   }
 );

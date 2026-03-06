@@ -7,7 +7,7 @@ import { requireClubAccess, createAuditLog, createNotification } from '../utils'
 export const awardOrTransferMedal = onCall<
   AwardOrTransferMedalRequest,
   Promise<AwardOrTransferMedalResponse>
->(async (request) => {
+>({ invoker: 'public' }, async (request) => {
   const { action, templateId, medalId, childIds, fromChildId, toChildId, groupId, clubId, reason } =
     request.data;
 

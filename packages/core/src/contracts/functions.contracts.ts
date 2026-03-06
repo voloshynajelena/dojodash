@@ -40,6 +40,14 @@ export interface AdminSetUserDisabledResponse {
   success: boolean;
 }
 
+export interface AdminDeleteUserRequest {
+  uid: string;
+}
+
+export interface AdminDeleteUserResponse {
+  success: boolean;
+}
+
 export interface AwardOrTransferMedalRequest {
   action: 'award' | 'transfer';
   templateId?: string;

@@ -7,7 +7,7 @@ import { requireAdmin, createAuditLog } from '../utils';
 export const adminAssignCoachToClubs = onCall<
   AdminAssignCoachToClubsRequest,
   Promise<AdminAssignCoachToClubsResponse>
->(async (request) => {
+>({ invoker: 'public' }, async (request) => {
   requireAdmin(request);
   const { coachUid, clubIds } = request.data;
 

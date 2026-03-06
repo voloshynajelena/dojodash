@@ -7,7 +7,7 @@ import { requireAdmin, createAuditLog } from '../utils';
 export const adminSetUserDisabled = onCall<
   AdminSetUserDisabledRequest,
   Promise<AdminSetUserDisabledResponse>
->(async (request) => {
+>({ invoker: 'public' }, async (request) => {
   requireAdmin(request);
   const { uid, disabled } = request.data;
 

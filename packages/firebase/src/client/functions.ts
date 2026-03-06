@@ -16,6 +16,8 @@ import type {
   AdminAssignCoachToClubsResponse,
   AdminSetUserDisabledRequest,
   AdminSetUserDisabledResponse,
+  AdminDeleteUserRequest,
+  AdminDeleteUserResponse,
   AwardOrTransferMedalRequest,
   AwardOrTransferMedalResponse,
   ApplyAttendanceBatchRequest,
@@ -69,6 +71,11 @@ export const adminSetUserDisabled = createCallable<
   AdminSetUserDisabledRequest,
   AdminSetUserDisabledResponse
 >('adminSetUserDisabled');
+
+export const adminDeleteUser = createCallable<
+  AdminDeleteUserRequest,
+  AdminDeleteUserResponse
+>('adminDeleteUser');
 
 export const awardOrTransferMedal = createCallable<
   AwardOrTransferMedalRequest,

@@ -13,6 +13,7 @@ function generateInviteCode(): string {
 }
 
 export const createInvite = onCall<CreateInviteRequest, Promise<CreateInviteResponse>>(
+  { invoker: 'public' },
   async (request) => {
     const { clubId, groupId, expiresInDays = 7, maxUses = 10 } = request.data;
 
@@ -64,6 +65,7 @@ export const createInvite = onCall<CreateInviteRequest, Promise<CreateInviteResp
 );
 
 export const claimInvite = onCall<ClaimInviteRequest, Promise<ClaimInviteResponse>>(
+  { invoker: 'public' },
   async (request) => {
     const claims = requireAuth(request);
     const { code, childId } = request.data;
