@@ -35,14 +35,14 @@ export default function AdminLogsPage() {
   }, [logs]);
 
   const uniqueTypes = useMemo(() => {
-    const types = new Set(logs.map((log) => log.entityType));
+    const types = new Set(logs.map((log) => log.targetType));
     return ['All', ...Array.from(types)];
   }, [logs]);
 
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       if (filterAction !== 'All' && log.action !== filterAction) return false;
-      if (filterType !== 'All' && log.entityType !== filterType) return false;
+      if (filterType !== 'All' && log.targetType !== filterType) return false;
       return true;
     });
   }, [logs, filterAction, filterType]);
@@ -138,12 +138,12 @@ export default function AdminLogsPage() {
                     <Badge color={getActionColor(log.action)}>{log.action}</Badge>
                   </Table.Td>
                   <Table.Td>{log.actorEmail || log.actorUid || 'System'}</Table.Td>
-                  <Table.Td>{log.targetEmail || log.entityId || '-'}</Table.Td>
+                  <Table.Td>{log.targetId || '-'}</Table.Td>
                   <Table.Td>
-                    {log.details
-                      ? typeof log.details === 'string'
-                        ? log.details
-                        : JSON.stringify(log.details).slice(0, 50)
+                    {log.metadata
+                      ? typeof log.metadata === 'string'
+                        ? log.metadata
+                        : JSON.stringify(log.metadata).slice(0, 50)
                       : '-'}
                   </Table.Td>
                 </Table.Tr>
