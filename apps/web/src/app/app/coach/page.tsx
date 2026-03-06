@@ -241,11 +241,11 @@ export default function CoachDashboard() {
           <Text c="dimmed">Manage your club and groups</Text>
         </div>
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }} maw={400}>
+        <Group gap="md">
           <Paper
             p="md"
             withBorder
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: 'pointer', minWidth: 180 }}
             onClick={() => router.push('/app/coach/members')}
           >
             <StatsCard
@@ -258,7 +258,7 @@ export default function CoachDashboard() {
           <Paper
             p="md"
             withBorder
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: 'pointer', minWidth: 180 }}
             onClick={() => router.push('/app/coach/groups')}
           >
             <StatsCard
@@ -268,7 +268,7 @@ export default function CoachDashboard() {
               color="violet"
             />
           </Paper>
-        </SimpleGrid>
+        </Group>
 
         <Paper p="lg" withBorder>
           <Group justify="space-between" mb="md">
