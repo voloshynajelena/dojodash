@@ -46,6 +46,9 @@ export interface Medal {
   customText?: string;
   shape?: MedalShape;
   borderStyle?: 'solid' | 'double' | 'ribbon';
+  // Display info
+  recipientName?: string;
+  groupName?: string;
 }
 
 export interface MedalTransfer {

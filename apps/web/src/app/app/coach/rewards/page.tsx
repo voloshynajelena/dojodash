@@ -336,7 +336,9 @@ export default function RewardsPage() {
         }
       } else {
         // Regular medals - can be awarded to multiple people
+        const selectedGroup = groups.find(g => g.id === selectedGroupId);
         for (const memberId of selectedMemberIds) {
+          const member = groupMembers.find(m => m.childId === memberId);
           await awardMedal(clubId, {
             templateId: selectedTemplate.id,
             childId: memberId,
@@ -353,6 +355,8 @@ export default function RewardsPage() {
             customText: selectedTemplate.customText,
             shape: selectedTemplate.shape,
             borderStyle: selectedTemplate.borderStyle,
+            recipientName: member?.childName,
+            groupName: selectedGroup?.name,
           });
         }
 

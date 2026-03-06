@@ -633,9 +633,6 @@ export default function CoachGroupsPage() {
             </Button>
           )}
 
-          <Button variant="subtle" onClick={closeInvite} mt="md">
-            Close
-          </Button>
         </Stack>
       </Modal>
     </Container>

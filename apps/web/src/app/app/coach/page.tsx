@@ -327,9 +327,9 @@ export default function CoachDashboard() {
           {recentMedals.length === 0 ? (
             <Text c="dimmed">No awards given yet. Start recognizing your students!</Text>
           ) : (
-            <Group gap="lg">
+            <Group gap="md">
               {recentMedals.map(medal => (
-                <Card key={medal.id} withBorder padding="sm" style={{ minWidth: 140 }}>
+                <Card key={medal.id} withBorder padding="sm" style={{ minWidth: 160 }}>
                   <Stack align="center" gap="xs">
                     <MedalGraphic
                       name={medal.name}
@@ -340,7 +340,13 @@ export default function CoachDashboard() {
                       size="sm"
                       isChampionship={medal.isChampionship}
                     />
+                    {medal.recipientName && (
+                      <Text size="sm" fw={500} ta="center">
+                        {medal.recipientName}
+                      </Text>
+                    )}
                     <Text size="xs" c="dimmed" ta="center">
+                      {medal.groupName && `${medal.groupName} • `}
                       {medal.awardedAt?.seconds
                         ? new Date(medal.awardedAt.seconds * 1000).toLocaleDateString()
                         : 'Recently'}
