@@ -48,7 +48,11 @@ export default function CoachDashboard() {
   const [rewardNote, setRewardNote] = useState('');
 
   useEffect(() => {
-    loadData();
+    if (clubId) {
+      loadData();
+    } else {
+      setLoading(false);
+    }
   }, [clubId]);
 
   const loadData = async () => {
@@ -224,6 +228,22 @@ export default function CoachDashboard() {
       <AuthGuard allowedRoles={['ADMIN', 'COACH']}>
         <Center h={300}>
           <Loader size="lg" />
+        </Center>
+      </AuthGuard>
+    );
+  }
+
+  if (!clubId) {
+    return (
+      <AuthGuard allowedRoles={['ADMIN', 'COACH']}>
+        <Center h={300}>
+          <Stack align="center" gap="md">
+            <IconUsers size={48} color="gray" style={{ opacity: 0.5 }} />
+            <Text c="dimmed" ta="center">
+              You are not assigned to any club yet.<br />
+              Please contact an administrator.
+            </Text>
+          </Stack>
         </Center>
       </AuthGuard>
     );

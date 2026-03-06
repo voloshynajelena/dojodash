@@ -34,7 +34,11 @@ export default function CoachClubPage() {
   });
 
   useEffect(() => {
-    loadClub();
+    if (clubId) {
+      loadClub();
+    } else {
+      setLoading(false);
+    }
   }, [clubId]);
 
   const loadClub = async () => {
@@ -144,6 +148,22 @@ export default function CoachClubPage() {
       <Container size="md" py="xl">
         <Center h={300}>
           <Loader size="lg" />
+        </Center>
+      </Container>
+    );
+  }
+
+  if (!clubId) {
+    return (
+      <Container size="md" py="xl">
+        <Center h={300}>
+          <Stack align="center" gap="md">
+            <IconPhoto size={48} color="gray" style={{ opacity: 0.5 }} />
+            <Text c="dimmed" ta="center">
+              You are not assigned to any club yet.<br />
+              Please contact an administrator.
+            </Text>
+          </Stack>
         </Center>
       </Container>
     );

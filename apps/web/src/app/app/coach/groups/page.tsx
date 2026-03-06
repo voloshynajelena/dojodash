@@ -71,10 +71,15 @@ export default function CoachGroupsPage() {
   });
 
   useEffect(() => {
-    loadGroups();
+    if (clubId) {
+      loadGroups();
+    } else {
+      setLoading(false);
+    }
   }, [clubId]);
 
   const loadGroups = async () => {
+    if (!clubId) return;
     try {
       setLoading(true);
       const data = await getGroups(clubId);
@@ -392,6 +397,22 @@ export default function CoachGroupsPage() {
       <Container size="lg" py="xl">
         <Center h={300}>
           <Loader size="lg" />
+        </Center>
+      </Container>
+    );
+  }
+
+  if (!clubId) {
+    return (
+      <Container size="lg" py="xl">
+        <Center h={300}>
+          <Stack align="center" gap="md">
+            <IconUsers size={48} color="gray" style={{ opacity: 0.5 }} />
+            <Text c="dimmed" ta="center">
+              You are not assigned to any club yet.<br />
+              Please contact an administrator.
+            </Text>
+          </Stack>
         </Center>
       </Container>
     );
