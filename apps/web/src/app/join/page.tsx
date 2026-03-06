@@ -85,9 +85,16 @@ function JoinContent() {
       if (user && members.some(m => m.childId === user.uid || m.parentUid === user.uid)) {
         setAlreadyMember(true);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error verifying code:', err);
-      setError('Failed to verify invite code. Please try again.');
+      // Show more specific error message
+      if (err?.code === 'failed-precondition') {
+        setError('Database index is being built. Please try again in a few minutes.');
+      } else if (err?.code === 'permission-denied') {
+        setError('Permission denied. Please log in and try again.');
+      } else {
+        setError(`Failed to verify invite code: ${err?.message || 'Unknown error'}`);
+      }
     } finally {
       setVerifying(false);
     }

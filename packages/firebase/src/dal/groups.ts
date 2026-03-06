@@ -221,24 +221,35 @@ export async function createGroupInvite(
 export async function getInviteByCode(code: string): Promise<GroupInvite | null> {
   const db = getFirestoreDb();
 
-  // Use collection group query for efficient lookup across all invites
-  const invitesQuery = query(
-    collectionGroup(db, INVITES_SUBCOLLECTION),
-    where('code', '==', code)
-  );
+  console.log('[getInviteByCode] Searching for code:', code);
 
-  const snapshot = await getDocs(invitesQuery);
+  try {
+    // Use collection group query for efficient lookup across all invites
+    const invitesQuery = query(
+      collectionGroup(db, INVITES_SUBCOLLECTION),
+      where('code', '==', code)
+    );
 
-  if (snapshot.empty) {
-    return null;
+    const snapshot = await getDocs(invitesQuery);
+    console.log('[getInviteByCode] Query returned', snapshot.size, 'results');
+
+    if (snapshot.empty) {
+      console.log('[getInviteByCode] No invite found with code:', code);
+      return null;
+    }
+
+    const inviteDoc = snapshot.docs[0];
+    if (!inviteDoc) {
+      return null;
+    }
+
+    const invite = { id: inviteDoc.id, ...inviteDoc.data() } as GroupInvite;
+    console.log('[getInviteByCode] Found invite:', invite);
+    return invite;
+  } catch (error) {
+    console.error('[getInviteByCode] Error:', error);
+    throw error;
   }
-
-  const inviteDoc = snapshot.docs[0];
-  if (!inviteDoc) {
-    return null;
-  }
-
-  return { id: inviteDoc.id, ...inviteDoc.data() } as GroupInvite;
 }
 
 export async function incrementInviteUsedCount(
