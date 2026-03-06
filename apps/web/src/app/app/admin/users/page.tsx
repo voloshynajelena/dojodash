@@ -3,12 +3,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Container, Title, Text, Card, Table, Badge, TextInput, Loader, Center,
-  Button, Group, Modal, Stack
+  Button, Group, Modal, Stack, Select
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconSearch } from '@tabler/icons-react';
-import { getAllUsers, getChildren, disableUser } from '@dojodash/firebase';
+import { getAllUsers, getChildren, disableUser, updateUser } from '@dojodash/firebase';
 import type { User, Child } from '@dojodash/core';
 
 interface UserWithChildren extends User {
@@ -23,6 +23,7 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState<UserWithChildren | null>(null);
   const [detailsOpened, { open: openDetails, close: closeDetails }] = useDisclosure(false);
   const [toggling, setToggling] = useState(false);
+  const [updatingRole, setUpdatingRole] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -91,6 +92,30 @@ export default function AdminUsersPage() {
       });
     } finally {
       setToggling(false);
+    }
+  };
+
+  const handleChangeRole = async (user: UserWithChildren, newRole: string) => {
+    try {
+      setUpdatingRole(true);
+      await updateUser(user.uid, { role: newRole as 'ADMIN' | 'COACH' | 'FAMILY' });
+      notifications.show({
+        title: 'Success',
+        message: `User role changed to ${newRole}`,
+        color: 'green',
+      });
+      await loadData();
+      // Update selected user
+      setSelectedUser((prev) => prev ? { ...prev, role: newRole as 'ADMIN' | 'COACH' | 'FAMILY' } : null);
+    } catch (error) {
+      console.error('Failed to change role:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to change user role',
+        color: 'red',
+      });
+    } finally {
+      setUpdatingRole(false);
     }
   };
 
@@ -204,12 +229,20 @@ export default function AdminUsersPage() {
               <Text>{selectedUser.email}</Text>
             </div>
             <div>
-              <Text size="sm" c="dimmed">
+              <Text size="sm" c="dimmed" mb="xs">
                 Role
               </Text>
-              <Badge color={getRoleColor(selectedUser.role)}>
-                {selectedUser.role}
-              </Badge>
+              <Select
+                data={[
+                  { value: 'ADMIN', label: 'Admin' },
+                  { value: 'COACH', label: 'Coach' },
+                  { value: 'FAMILY', label: 'Family' },
+                ]}
+                value={selectedUser.role}
+                onChange={(value) => value && handleChangeRole(selectedUser, value)}
+                disabled={updatingRole}
+                w={150}
+              />
             </div>
             <div>
               <Text size="sm" c="dimmed">
