@@ -80,13 +80,17 @@ service cloud.firestore {
         // Allow public read for basic group info (needed for invite verification)
         allow read: if true;
         allow create: if hasClubAccess(clubId);
-        allow update: if hasClubAccess(clubId);
+        // Allow coaches/admins full update, or authenticated users to update only memberCount
+        allow update: if hasClubAccess(clubId) ||
+          (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount']));
         allow delete: if hasClubAccess(clubId);
 
         // Group members
         match /members/{memberId} {
           allow read: if isAuthenticated();
-          allow write: if hasClubAccess(clubId);
+          // Coaches/admins can manage all members, users can add themselves
+          allow create: if isAuthenticated() && (hasClubAccess(clubId) || request.auth.uid == request.resource.data.parentUid);
+          allow update, delete: if hasClubAccess(clubId);
         }
 
         // Invites - allow public read for verification
