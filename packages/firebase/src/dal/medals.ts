@@ -129,7 +129,8 @@ export async function awardMedal(
   const db = getFirestoreDb();
   const colRef = collection(db, CLUBS_COLLECTION, clubId, MEDALS_SUBCOLLECTION);
   const docRef = doc(colRef);
-  await setDoc(docRef, medal);
+  const cleanMedal = removeUndefined(medal);
+  await setDoc(docRef, cleanMedal);
   return docRef.id;
 }
 
