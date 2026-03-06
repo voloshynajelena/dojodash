@@ -23,8 +23,8 @@ import {
   IconTrophy,
 } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
-import { subscribeToNotifications } from '@dojodash/firebase';
-import type { UserRole, Notification } from '@dojodash/core';
+import { subscribeToNotifications, getClub, getMemberGroups } from '@dojodash/firebase';
+import type { UserRole, Notification, Club } from '@dojodash/core';
 import type { ReactNode } from 'react';
 
 interface NavItem {
@@ -76,6 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [clubName, setClubName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -87,6 +88,39 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     return () => unsubscribe();
   }, [user]);
+
+  useEffect(() => {
+    const loadClub = async () => {
+      try {
+        let clubId: string | undefined;
+
+        // Coach has clubIds in claims
+        if (claims?.role === 'COACH' && claims?.clubIds?.length) {
+          clubId = claims.clubIds[0];
+        }
+        // Family gets club from their children's group memberships
+        else if (claims?.role === 'FAMILY' && user) {
+          const memberGroups = await getMemberGroups(user.uid);
+          if (memberGroups.length > 0 && memberGroups[0]) {
+            clubId = memberGroups[0].clubId;
+          }
+        }
+
+        if (clubId) {
+          const club = await getClub(clubId);
+          if (club) {
+            setClubName(club.name);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load club:', error);
+      }
+    };
+
+    if (claims?.role === 'COACH' || claims?.role === 'FAMILY') {
+      loadClub();
+    }
+  }, [claims, user]);
 
   const navItems = claims ? getNavItems(claims.role) : [];
 
@@ -104,9 +138,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Group h="100%" px="md" justify="space-between">
           <Group>
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <Text size="xl" fw={700} c="brand">
-              DojoDash
-            </Text>
+            <Group gap="xs">
+              <Text size="xl" fw={700} c="brand">
+                DojoDash
+              </Text>
+              {clubName && (claims?.role === 'COACH' || claims?.role === 'FAMILY') && (
+                <>
+                  <Text size="xl" c="dimmed">-</Text>
+                  <Text size="xl" fw={500}>{clubName}</Text>
+                </>
+              )}
+            </Group>
           </Group>
 
           <Group gap="sm">
