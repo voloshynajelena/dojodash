@@ -152,11 +152,13 @@ function JoinContent() {
       setTimeout(() => {
         router.push('/app/family');
       }, 2000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error joining group:', err);
+      console.error('Error code:', err?.code);
+      console.error('Error message:', err?.message);
       notifications.show({
         title: 'Error',
-        message: 'Failed to join group. Please try again.',
+        message: `Failed to join group: ${err?.message || 'Please try again.'}`,
         color: 'red',
       });
     } finally {
