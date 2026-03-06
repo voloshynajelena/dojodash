@@ -122,6 +122,14 @@ export async function getGroupMedals(clubId: string, groupId: string): Promise<M
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Medal);
 }
 
+export async function getRecentMedals(clubId: string, limit: number = 10): Promise<Medal[]> {
+  const db = getFirestoreDb();
+  const colRef = collection(db, CLUBS_COLLECTION, clubId, MEDALS_SUBCOLLECTION);
+  const q = query(colRef, orderBy('awardedAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.slice(0, limit).map((doc) => ({ id: doc.id, ...doc.data() }) as Medal);
+}
+
 export async function awardMedal(
   clubId: string,
   medal: Omit<Medal, 'id'>

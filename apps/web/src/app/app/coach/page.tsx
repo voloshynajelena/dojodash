@@ -17,9 +17,10 @@ import { StatsCard } from '@dojodash/ui/components';
 import { useAuth } from '@/hooks/useAuth';
 import {
   getSessions, getGroups, getGroupMembers, updateSession,
-  getMedalTemplates, awardMedal
+  getMedalTemplates, awardMedal, getRecentMedals
 } from '@dojodash/firebase';
-import type { Session, Group as GroupType, GroupMember, MedalTemplate } from '@dojodash/core';
+import { MedalGraphic } from '@dojodash/ui/components';
+import type { Session, Group as GroupType, GroupMember, MedalTemplate, Medal } from '@dojodash/core';
 
 export default function CoachDashboard() {
   const { user, claims } = useAuth();
@@ -30,6 +31,7 @@ export default function CoachDashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [groups, setGroups] = useState<GroupType[]>([]);
   const [rewardTemplates, setRewardTemplates] = useState<MedalTemplate[]>([]);
+  const [recentMedals, setRecentMedals] = useState<Medal[]>([]);
   const [todaysSessions, setTodaysSessions] = useState<Session[]>([]);
   const [weekSessions, setWeekSessions] = useState<Session[]>([]);
 
@@ -53,15 +55,17 @@ export default function CoachDashboard() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [sessionsData, groupsData, templatesData] = await Promise.all([
+      const [sessionsData, groupsData, templatesData, medalsData] = await Promise.all([
         getSessions(clubId),
         getGroups(clubId),
         getMedalTemplates(clubId),
+        getRecentMedals(clubId, 5),
       ]);
 
       setSessions(sessionsData);
       setGroups(groupsData);
       setRewardTemplates(templatesData);
+      setRecentMedals(medalsData);
 
       // Filter today's sessions
       const today = new Date();
@@ -232,7 +236,7 @@ export default function CoachDashboard() {
           <Text c="dimmed">Manage your club and groups</Text>
         </div>
 
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
+        <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }}>
           <StatsCard
             title="Total Members"
             value={String(getTotalMembers())}
@@ -250,6 +254,12 @@ export default function CoachDashboard() {
             value={String(todaysSessions.length)}
             icon={<IconClock size={24} />}
             color="orange"
+          />
+          <StatsCard
+            title="Awards Given"
+            value={String(recentMedals.length)}
+            icon={<IconTrophy size={24} />}
+            color="yellow"
           />
           <StatsCard
             title="Groups"
@@ -303,6 +313,42 @@ export default function CoachDashboard() {
                 </Card>
               ))}
             </Stack>
+          )}
+        </Paper>
+
+        <Paper p="lg" withBorder>
+          <Group justify="space-between" mb="md">
+            <Title order={4}>Recent Awards</Title>
+            <Button variant="subtle" size="sm" component="a" href="/app/coach/rewards">
+              View All
+            </Button>
+          </Group>
+
+          {recentMedals.length === 0 ? (
+            <Text c="dimmed">No awards given yet. Start recognizing your students!</Text>
+          ) : (
+            <Group gap="lg">
+              {recentMedals.map(medal => (
+                <Card key={medal.id} withBorder padding="sm" style={{ minWidth: 140 }}>
+                  <Stack align="center" gap="xs">
+                    <MedalGraphic
+                      name={medal.name}
+                      customText={medal.customText}
+                      color={medal.color}
+                      shape={medal.shape}
+                      borderStyle={medal.borderStyle}
+                      size="sm"
+                      isChampionship={medal.isChampionship}
+                    />
+                    <Text size="xs" c="dimmed" ta="center">
+                      {medal.awardedAt?.seconds
+                        ? new Date(medal.awardedAt.seconds * 1000).toLocaleDateString()
+                        : 'Recently'}
+                    </Text>
+                  </Stack>
+                </Card>
+              ))}
+            </Group>
           )}
         </Paper>
 
